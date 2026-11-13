@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { BookOpen, Cpu, Cable, Code2, GitBranch, Lightbulb, Search, ShieldCheck, Sprout, ChevronRight, CheckCircle2, AlertTriangle, RadioTower, Database, Droplets, CloudSun } from 'lucide-react';
+import { BookOpen, Cpu, Cable, Code2, GitBranch, Lightbulb, Search, ShieldCheck, Sprout, ChevronRight, CheckCircle2, AlertTriangle, RadioTower, Database, Droplets, CloudSun, Waves, Ruler } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+
+import SoilWaterTank from './simulations/SoilWaterTank';
+import LevelingInstrument from './simulations/LevelingInstrument';
+import SugarcaneIrrigation from './simulations/SugarcaneIrrigation';
 
 const articles = [
   { id: 'intro', label: 'เริ่มต้นใช้งาน', group: 'ภาพรวมระบบ', icon: BookOpen },
@@ -9,6 +13,9 @@ const articles = [
   { id: 'communication', label: 'การสื่อสาร MQTT', group: 'การพัฒนา', icon: RadioTower },
   { id: 'control', label: 'หลักการควบคุม Manual / Auto', group: 'การพัฒนา', icon: Code2 },
   { id: 'safety', label: 'การทดสอบและความปลอดภัย', group: 'การใช้งาน', icon: ShieldCheck },
+  { id: 'sim-soil', label: 'ดินคือถังน้ำ (จำลอง)', group: 'สื่อการสอน', icon: Droplets },
+  { id: 'sim-level', label: 'กล้องระดับ (จำลอง)', group: 'สื่อการสอน', icon: Ruler },
+  { id: 'sim-sugarcane', label: 'น้ำหยดกับอ้อย (จำลอง)', group: 'สื่อการสอน', icon: Waves },
 ];
 
 function ArticleContent({ id }: { id: string }) {
@@ -41,6 +48,20 @@ function ArticleContent({ id }: { id: string }) {
     <h3>ตัวอย่างลำดับการทำงาน Auto</h3><ol><li>อ่านค่าความชื้นดินจากเซนเซอร์</li><li>ตรวจสอบว่าเซนเซอร์อ่านค่าได้ปกติหรือไม่</li><li>เปรียบเทียบค่ากับ Threshold ที่กำหนด</li><li>สั่ง Relay ให้ปั๊มทำงานเมื่อดินแห้ง</li><li>ตรวจสอบเงื่อนไขหยุดปั๊มและส่งสถานะกลับ Dashboard</li></ol>
     <div className="doc-callout"><Lightbulb /><div><strong>แนะนำให้ใช้ Hysteresis</strong><span>กำหนดจุดเปิดและจุดปิดต่างกัน เช่น เปิดเมื่อความชื้นต่ำกว่า 35% และปิดเมื่อสูงกว่า 45% เพื่อป้องกันปั๊มเปิด–ปิดถี่เกินไป</span></div></div>
   </>;
+  if (id === 'sim-soil') return <>
+    <p className="article-lead">ลองเลื่อนระดับน้ำในดินเพื่อดูว่าพืชยังดูดน้ำได้หรือไม่ และดูช่วง “น้ำที่พืชใช้ได้” ซึ่งควรใช้เป็นเกณฑ์สั่งปั๊ม</p>
+    <SoilWaterTank />
+    <div className="doc-callout"><Lightbulb /><div><strong>นำไปใช้กับระบบจริง</strong><span>ตั้งเกณฑ์เปิดปั๊มเมื่อความชื้นเข้าใกล้จุดเหี่ยวเฉาถาวร และหยุดเมื่อถึงความจุสนาม จะลดการรดน้ำเกินความจำเป็น</span></div></div>
+  </>;
+  if (id === 'sim-level') return <>
+    <p className="article-lead">ปรับค่าไม้หลังและไม้หน้า แล้วดูว่าความต่างระดับ (ΔH) เปลี่ยนอย่างไร</p>
+    <LevelingInstrument />
+    <div className="doc-callout"><Lightbulb /><div><strong>เกี่ยวกับแปลงของคุณ</strong><span>พื้นที่ที่ไม่เรียบทำให้น้ำไหลไปกองที่จุดต่ำ ควรปรับระดับก่อนติดตั้งน้ำหยด หรือแบ่งโซนตามความสูงของพื้นที่</span></div></div>
+  </>;
+  if (id === 'sim-sugarcane') return <>
+    <p className="article-lead">ดูการทำงานของน้ำหยดและความต้องการน้ำในแต่ละระยะการเติบโตของอ้อย</p>
+    <SugarcaneIrrigation />
+  </>;
   if (id === 'safety') return <>
     <p className="article-lead">ก่อนต่อปั๊มน้ำจริง ควรทดสอบการทำงานทีละส่วนและออกแบบระบบป้องกันความเสียหาย</p>
     <h3>รายการตรวจสอบก่อนใช้งาน</h3><div className="checklist-doc"><div><CheckCircle2 /><span>ตรวจสอบแรงดันและกระแสของปั๊มให้เหมาะกับแหล่งจ่ายไฟ</span></div><div><CheckCircle2 /><span>เลือก Relay หรือ MOSFET Driver ที่รองรับโหลดได้จริง</span></div><div><CheckCircle2 /><span>แยกวงจรไฟเลี้ยงปั๊มออกจากวงจร ESP32 ตามการออกแบบที่เหมาะสม</span></div><div><CheckCircle2 /><span>เพิ่มเงื่อนไขปิดปั๊มเมื่อเซนเซอร์ผิดปกติหรือสื่อสารขาดหาย</span></div><div><CheckCircle2 /><span>ทดสอบปุ่ม Manual และเงื่อนไข Auto โดยยังไม่ต่อปั๊มจริงก่อน</span></div></div>
@@ -68,7 +89,7 @@ export default function Docs() {
 
   return (
     <div className="page-content docs-page">
-      <div className="page-heading-row docs-heading"><div><div className="eyebrow">KNOWLEDGE BASE / LEARNING</div><h1>Docs & Learning</h1><p>คลังความรู้ คู่มือ และองค์ประกอบที่ใช้ในการพัฒนาโครงงาน</p></div><div className="docs-count"><BookOpen size={18} /><div><strong>06</strong><span>บทเรียน</span></div></div></div>
+      <div className="page-heading-row docs-heading"><div><div className="eyebrow">KNOWLEDGE BASE / LEARNING</div><h1>Docs & Learning</h1><p>คลังความรู้ คู่มือ และองค์ประกอบที่ใช้ในการพัฒนาโครงงาน</p></div><div className="docs-count"><BookOpen size={18} /><div><strong>09</strong><span>บทเรียน</span></div></div></div>
       <div className="docs-layout">
         <aside className="docs-sidebar">
           <div className="docs-search"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาบทเรียน..." /></div>

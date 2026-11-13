@@ -1,0 +1,363 @@
+/* ===== สื่อการสอนแบบจำลอง (หน้า Docs) ===== */
+
+.sim-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sim-lead {
+  margin: 0;
+  color: #627268;
+  font-size: 11px;
+  line-height: 1.85;
+}
+
+.sim-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #f8faf8;
+  border: 1px solid #edf1ee;
+  border-radius: 10px;
+}
+
+.sim-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #41554a;
+}
+
+/* ---------- ถังน้ำในดิน ---------- */
+
+.sim-tank-row {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.sim-tank {
+  position: relative;
+  height: 230px;
+  border: 2px solid #b9c9bf;
+  border-radius: 10px 10px 14px 14px;
+  background: #f6f4ef;
+  overflow: hidden;
+}
+
+.sim-tank-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, #63a9e4 0%, #3b8fd9 100%);
+  transition: height 0.25s ease;
+}
+
+.sim-tank-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed #7cc0f0;
+  color: #2f6f9e;
+}
+
+.sim-tank-marker em {
+  position: absolute;
+  right: 6px;
+  top: -17px;
+  font-style: normal;
+  font-size: 8px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 2px 4px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.sim-tank-marker.danger {
+  border-top-color: #e08a83;
+}
+
+.sim-tank-marker.danger em {
+  color: #a3564f;
+}
+
+.sim-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.sim-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.sim-metric {
+  border: 1px solid #edf1ee;
+  background: #fbfcfb;
+  border-radius: 9px;
+  padding: 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sim-metric span {
+  font-size: 9px;
+  color: #93a098;
+}
+
+.sim-metric strong {
+  font-size: 20px;
+  color: #2b4136;
+  letter-spacing: -0.5px;
+}
+
+.sim-metric strong em {
+  font-style: normal;
+  font-size: 10px;
+  color: #8b9890;
+  margin-left: 3px;
+  font-weight: 500;
+}
+
+.sim-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: #f2f8f3;
+  border: 1px solid #e4efe6;
+  color: #3f7d5b;
+}
+
+.sim-status svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.sim-status > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sim-status strong {
+  font-size: 10px;
+  color: #35684f;
+}
+
+.sim-status span {
+  font-size: 9px;
+  color: #7b8b81;
+  line-height: 1.7;
+}
+
+.sim-status.warn {
+  background: #fffaf0;
+  border-color: #f2e5c9;
+  color: #c08a3f;
+}
+
+.sim-status.warn strong {
+  color: #8a6730;
+}
+
+.sim-status.danger {
+  background: #fdf3f2;
+  border-color: #f3dedb;
+  color: #c0675d;
+}
+
+.sim-status.danger strong {
+  color: #9b4a42;
+}
+
+.sim-status.neutral {
+  background: #f4f7fa;
+  border-color: #e3ebf2;
+  color: #5b8db6;
+}
+
+.sim-status.neutral strong {
+  color: #3f6c92;
+}
+
+/* ---------- ตัวเลื่อน ---------- */
+
+.sim-controls {
+  display: grid;
+  gap: 12px;
+}
+
+.sim-range-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 10px;
+  color: #6f7d74;
+}
+
+.sim-range-row > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sim-range-row > strong {
+  color: #2d8059;
+  font-size: 11px;
+}
+
+.sim-range-row input[type='range'] {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: #23865f;
+  height: 4px;
+  margin: 0;
+}
+
+.sim-note {
+  margin: 0;
+  font-size: 9px;
+  color: #9aa69e;
+  line-height: 1.8;
+  border-top: 1px solid #edf1ee;
+  padding-top: 11px;
+}
+
+/* ---------- ระยะการเติบโตของอ้อย ---------- */
+
+.sim-stages {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.sim-stage {
+  border: 1px solid #edf1ee;
+  border-radius: 9px;
+  padding: 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  background: #fbfcfb;
+  text-align: center;
+}
+
+.sim-stage strong {
+  font-size: 10px;
+  color: #3f5548;
+}
+
+.sim-stage > span {
+  font-size: 8px;
+  color: #93a098;
+}
+
+.sim-drops {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 16px;
+}
+
+.sim-drop {
+  width: 6px;
+  height: 9px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: #3b8fd9;
+}
+
+.sim-drop-none {
+  font-size: 8px;
+  color: #c0675d;
+  font-weight: 600;
+}
+
+/* ---------- อนิเมชัน ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .sim-fall {
+    animation: sim-fall 1.4s ease-in infinite;
+  }
+
+  .sim-wet {
+    transform-box: fill-box;
+    transform-origin: 50% 0%;
+    animation: sim-grow 6s ease-out infinite;
+  }
+
+  .sim-sway {
+    transform-origin: 0 0;
+    animation: sim-sway 3s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes sim-fall {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(38px);
+    opacity: 0;
+  }
+}
+
+@keyframes sim-grow {
+  0% {
+    transform: scale(0.25);
+    opacity: 0.3;
+  }
+  75% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  92% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes sim-sway {
+  from {
+    transform: rotate(-1.5deg);
+  }
+  to {
+    transform: rotate(1.5deg);
+  }
+}
+
+@media (max-width: 650px) {
+  .sim-tank-row {
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .sim-tank {
+    height: 190px;
+  }
+
+  .sim-stages {
+    grid-template-columns: 1fr 1fr;
+  }
+}
