@@ -1,0 +1,93 @@
+import type { Weather, Zone, ZoneId, ZoneValues } from '../types/iot';
+
+/**
+ * ที่เก็บข้อมูลฝั่ง server (in-memory)
+ * มีของแค่ 2 อย่าง: ค่าอากาศ + 5 แปลง
+ * รีสตาร์ท server = กลับไปค่าเริ่มต้น
+ */
+
+interface FarmStore {
+  weather: Weather;
+  zones: Zone[];
+  updatedAt: string;
+}
+
+// ค่าเริ่มต้นของการ์ดแถวบน
+const initialWeather: Weather = {
+  temperatureC: 29.5,
+  humidity: 70,
+  etoMmPerDay: 4.2,
+};
+
+// ค่าเริ่มต้นของ 5 แปลง (แก้ตัวเลขที่แสดงบนหน้าเว็บได้ที่นี่)
+const initialZones: Zone[] = [
+  { id: 'herb', name: 'ไม้ล้มลุก', pumpOn: false, values: { soilWaterKpa: 32.5 } },
+  { id: 'rice', name: 'นาข้าว', pumpOn: false, values: { etoMmPerHour: 0.42 } },
+  {
+    id: 'sunnhemp',
+    name: 'ปอเทือง',
+    pumpOn: false,
+    values: { soilTempC: 26.8, soilHumidity: 58.5 },
+  },
+  { id: 'sunflower', name: 'ทานตะวัน', pumpOn: false, values: { soilMoisturePercent: 41 } },
+  { id: 'potted', name: 'ไม้กระถาง', pumpOn: false, values: { soilWaterKpa: 18.4 } },
+];
+
+// เก็บไว้ที่ globalThis เพื่อไม่ให้ค่าหายตอน Next.js โหลดโมดูลใหม่ (dev)
+const globalStore = globalThis as unknown as { farmStore?: FarmStore };
+
+function createStore(): FarmStore {
+  return {
+    weather: { ...initialWeather },
+    zones: initialZones.map((zone) => ({ ...zone, values: { ...zone.values } })),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/** ดึงข้อมูลทั้งหมด (สร้างค่าเริ่มต้นให้ถ้ายังไม่มี) */
+export function getStore(): FarmStore {
+  if (!globalStore.farmStore) {
+    globalStore.farmStore = createStore();
+  }
+
+  return globalStore.farmStore;
+}
+
+/** อัปเดตค่าอากาศ (ส่งเฉพาะค่าที่เปลี่ยน) */
+export function updateWeather(patch: Partial<Weather>): Weather {
+  const store = getStore();
+
+  store.weather = { ...store.weather, ...patch };
+  store.updatedAt = new Date().toISOString();
+
+  return store.weather;
+}
+
+/** อัปเดตค่าของแปลงตาม id (ส่งเฉพาะค่าที่เปลี่ยน) */
+export function updateZoneValues(
+  id: ZoneId,
+  values: ZoneValues
+): Zone | undefined {
+  const store = getStore();
+  const zone = store.zones.find((item) => item.id === id);
+
+  if (!zone) return undefined;
+
+  zone.values = { ...zone.values, ...values };
+  store.updatedAt = new Date().toISOString();
+
+  return zone;
+}
+
+/** เปิด–ปิดปั๊มของแปลง */
+export function setZonePump(id: ZoneId, on: boolean): Zone | undefined {
+  const store = getStore();
+  const zone = store.zones.find((item) => item.id === id);
+
+  if (!zone) return undefined;
+
+  zone.pumpOn = on;
+  store.updatedAt = new Date().toISOString();
+
+  return zone;
+}

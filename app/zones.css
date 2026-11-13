@@ -1,0 +1,211 @@
+/* ===== Plant zones dashboard (หน้า Control แบบ 5 คอลัมน์) ===== */
+
+.sensor-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.sensor-strip .metric-card {
+  min-height: 128px;
+}
+
+.plant-zones-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 13px;
+}
+
+.plant-zones-heading h2 {
+  font-size: 15px;
+  color: #304238;
+  margin-bottom: 4px;
+  letter-spacing: -0.2px;
+}
+
+.plant-zones-heading p {
+  margin: 0;
+  color: #9aa59e;
+  font-size: 10px;
+}
+
+.plant-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.plant-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 19px;
+  min-height: 208px;
+}
+
+.plant-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.plant-index {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  border: 1px solid #d9e6dd;
+  background: #f4f9f5;
+  color: #2f7f59;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.plant-card-head h2 {
+  font-size: 14px;
+  margin: 0 0 3px;
+  color: #2d4035;
+  letter-spacing: -0.2px;
+}
+
+.plant-card-head span {
+  font-size: 9px;
+  color: #9aa59e;
+}
+
+.plant-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 10px;
+}
+
+.value-card {
+  border: 1px solid #e9eeea;
+  background: #fbfcfb;
+  border-radius: 10px;
+  padding: 12px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.value-label {
+  font-size: 9px;
+  color: #93a098;
+  letter-spacing: 0.3px;
+}
+
+.value-number {
+  font-size: 21px;
+  font-weight: 700;
+  color: #2b4136;
+  letter-spacing: -0.6px;
+}
+
+.value-unit {
+  font-size: 10px;
+  font-weight: 500;
+  color: #8b9890;
+  margin-left: 4px;
+  letter-spacing: 0;
+}
+
+.pump-state-button {
+  margin-top: auto;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid #e2e9e3;
+  background: #fff;
+  color: #7c8a82;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pump-state-button:hover:not(:disabled) {
+  border-color: #b9d6c5;
+  background: #f8fbf9;
+}
+
+.pump-state-button.is-on {
+  background: #23865f;
+  border-color: #23865f;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(35, 134, 95, 0.18);
+}
+
+.pump-state-button.is-on:hover:not(:disabled) {
+  background: #1b7550;
+  border-color: #1b7550;
+}
+
+.pump-state-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #bdc9c1;
+  flex: 0 0 auto;
+}
+
+.pump-state-button.is-on .pump-state-dot {
+  background: #d9f5e6;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22);
+}
+
+.pump-state-caption {
+  font-size: 9px;
+  font-weight: 500;
+  color: #9aa79f;
+  letter-spacing: 0;
+}
+
+.pump-state-button.is-on .pump-state-caption {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* การ์ดที่ 5 (ไม้กระถาง) กว้างเต็มแถว */
+.plant-wide {
+  margin-top: 16px;
+  min-height: 0;
+}
+
+.plant-wide .value-card {
+  background: #f6fbf8;
+}
+
+.plant-wide .pump-state-button {
+  margin-top: 2px;
+}
+
+@media (max-width: 980px) {
+  .plant-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .sensor-strip {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .plant-values {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .plant-card {
+    min-height: 0;
+    padding: 14px;
+  }
+}
