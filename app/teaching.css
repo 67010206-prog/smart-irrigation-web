@@ -1,0 +1,381 @@
+/* ===== สื่อการสอนชุดใหม่: เส้นทางน้ำ + ผังแปลง 3 โซน ===== */
+
+.tch-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 8px;
+}
+
+.tch-tab {
+  text-align: left;
+  border: 1px solid #e4ebe6;
+  background: #fbfcfb;
+  border-radius: 10px;
+  padding: 9px 11px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.tch-tab strong {
+  font-size: 10px;
+  color: #3f5548;
+}
+
+.tch-tab small {
+  font-size: 8px;
+  color: #93a098;
+  line-height: 1.6;
+}
+
+.tch-tab:hover {
+  border-color: #c9ddd1;
+}
+
+.tch-tab.on {
+  border-color: #23865f;
+  background: #f1f8f3;
+}
+
+.tch-tab.on strong {
+  color: #1f6e4e;
+}
+
+.tch-scene {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.tch-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dfe8e2;
+  background: #ffffff;
+  color: #4a6153;
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.tch-btn:hover {
+  border-color: #bcd7c7;
+  background: #f6faf7;
+}
+
+.tch-btn.primary {
+  background: #23865f;
+  border-color: #23865f;
+  color: #ffffff;
+}
+
+.tch-btn.primary:hover {
+  background: #1f7653;
+}
+
+.tch-caption {
+  border-left: 3px solid #cfe6d8;
+  padding: 2px 0 2px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tch-caption strong {
+  font-size: 11px;
+  color: #2f5946;
+}
+
+.tch-caption p {
+  margin: 0;
+  font-size: 9px;
+  color: #6f7d74;
+}
+
+.tch-caption span {
+  font-size: 9px;
+  color: #93a098;
+  line-height: 1.7;
+}
+
+.tch-hint {
+  font-size: 8px;
+  color: #93a098;
+}
+
+.tch-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.tch-chip-label {
+  font-size: 9px;
+  color: #6f7d74;
+  font-weight: 600;
+}
+
+.tch-chip {
+  border: 1px solid #e2eae4;
+  background: #fbfcfb;
+  color: #5f7267;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 9px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tch-chip.on {
+  background: #eaf5ee;
+  border-color: #9ecdb4;
+  color: #1f6e4e;
+  font-weight: 700;
+}
+
+.tch-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 9px;
+}
+
+.tch-valves {
+  display: grid;
+  gap: 7px;
+}
+
+.tch-valve {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #e9efea;
+  background: #fbfcfb;
+  border-radius: 9px;
+  padding: 8px 11px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.tch-valve:hover {
+  border-color: #c9ddd1;
+}
+
+.tch-valve.on {
+  background: #f4faf6;
+  border-color: #b7d9c6;
+}
+
+.tch-valve-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.tch-valve-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tch-valve-text strong {
+  font-size: 10px;
+  color: #3f5548;
+}
+
+.tch-valve-text small {
+  font-size: 8px;
+  color: #93a098;
+}
+
+.tch-switch {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: #dfe7e1;
+  flex: 0 0 auto;
+  transition: background 0.15s ease;
+}
+
+.tch-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.15s ease;
+}
+
+.tch-switch.on {
+  background: #23865f;
+}
+
+.tch-switch.on::after {
+  transform: translateX(14px);
+}
+
+.tch-hint-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 8px;
+  color: #93a098;
+}
+
+.tch-hint-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ---------- SVG ภายในสื่อการสอน ---------- */
+
+.tch-pipe {
+  fill: none;
+  stroke: #cfdad3;
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+
+.tch-pipe-flow {
+  fill: none;
+  stroke: #3b8fd9;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 6 12;
+  opacity: 0;
+}
+
+.tch-pipe-flow.on {
+  opacity: 1;
+}
+
+.tch-pipe-flow.reverse {
+  opacity: 1;
+  stroke: #63a9a0;
+}
+
+.tch-node circle {
+  fill: #ffffff;
+  stroke: #cfdad3;
+  stroke-width: 2;
+  transition: all 0.2s ease;
+}
+
+.tch-node.active circle,
+.tch-node:hover circle {
+  fill: #eaf5ee;
+  stroke: #23865f;
+  stroke-width: 3;
+}
+
+.tch-node.danger circle {
+  fill: #fdf3f2;
+  stroke: #c0675d;
+}
+
+.tch-node-num {
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: middle;
+  fill: #4a6153;
+  dominant-baseline: middle;
+}
+
+.tch-node-label {
+  font-size: 10px;
+  fill: #8b9a91;
+}
+
+.tch-node-title {
+  font-size: 12px;
+  font-weight: 600;
+  fill: #2f5946;
+}
+
+.tch-plot-title {
+  font-size: 11px;
+  font-weight: 600;
+  fill: #3f5548;
+}
+
+.tch-plot-sub {
+  font-size: 9px;
+  fill: #93a098;
+}
+
+.tch-plot-q {
+  font-size: 9px;
+  font-weight: 600;
+  fill: #5f7267;
+}
+
+.tch-pump {
+  fill: #f2f5f1;
+  stroke: #cfdad3;
+  stroke-width: 2;
+}
+
+.tch-pump.on {
+  fill: #eaf5ee;
+  stroke: #23865f;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tch-pipe-flow.on {
+    animation: tch-flow 0.9s linear infinite;
+  }
+
+  .tch-drop {
+    animation: tch-drop 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes tch-flow {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+
+@keyframes tch-drop {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 650px) {
+  .tch-tab {
+    padding: 8px 9px;
+  }
+}

@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import './globals.css';
 import './zones.css';
 import './simulations.css';
+import './docs.css';
+import './teaching.css';
 
 export const metadata: Metadata = {
   title: 'Smart Irrigation | ระบบให้น้ำอัจฉริยะ',
