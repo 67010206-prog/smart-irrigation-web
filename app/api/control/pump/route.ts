@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 
-import { setZonePump } from '@/lib/server/store';
+import { getStore, setZonePump } from '@/lib/server/store';
 import { ZONE_GROUP_IDS, forwardPumpCommand } from '@/lib/server/nodered';
+import { ensureMqttBridge, getMqttStatus } from '@/lib/server/mqttBridge';
+import { logEvent } from '@/lib/server/debugLog';
 
 import type { ZoneId } from '@/lib/types/iot';
 
@@ -16,6 +18,53 @@ const ZONE_IDS: ZoneId[] = [
 ];
 
 /**
+ * GET /api/control/pump
+ * อ่านสถานะปั๊มของทุกแปลง (พร้อม group_id) จาก store ที่อัปเดตด้วย MQTT
+ *
+ * GET /api/control/pump?zone=herb
+ * อ่านเฉพาะแปลงเดียว
+ */
+export async function GET(request: Request) {
+  ensureMqttBridge();
+
+  const { searchParams } = new URL(request.url);
+  const zoneParam = searchParams.get('zone');
+
+  if (zoneParam && !ZONE_IDS.includes(zoneParam as ZoneId)) {
+    return NextResponse.json(
+      { error: 'zone ต้องเป็นหนึ่งใน: herb, rice, sunnhemp, sunflower, potted' },
+      { status: 400 }
+    );
+  }
+
+  const zones = getStore().zones;
+
+  const data = zones.map((zone) => ({
+    zone: zone.id,
+    name: zone.name,
+    group_id: ZONE_GROUP_IDS[zone.id],
+    pumpOn: zone.pumpOn,
+    state: zone.pumpOn ? 'ON' : 'OFF',
+  }));
+
+  const mqtt = getMqttStatus();
+
+  if (zoneParam) {
+    const found = data.find((item) => item.zone === zoneParam);
+
+    return NextResponse.json(
+      { ok: true, ...found, mqtt },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
+  }
+
+  return NextResponse.json(
+    { ok: true, zones: data, mqtt },
+    { headers: { 'Cache-Control': 'no-store' } }
+  );
+}
+
+/**
  * POST /api/control/pump
  * เปิด–ปิดปั๊มของแปลง: { "zone": "herb", "state": true }
  *
@@ -23,15 +72,21 @@ const ZONE_IDS: ZoneId[] = [
  * ถ้า Node-RED ไม่รับคำสั่ง จะไม่เปลี่ยนสถานะใน store (หน้าเว็บจะไม่ขึ้นว่าสำเร็จ)
  */
 export async function POST(request: Request) {
+  ensureMqttBridge();
+
   let body: { zone?: unknown; state?: unknown };
 
   try {
     body = (await request.json()) as { zone?: unknown; state?: unknown };
   } catch {
+    logEvent('pump.reject', 'body ไม่ใช่ JSON ที่ถูกต้อง');
+
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
   if (!ZONE_IDS.includes(body.zone as ZoneId)) {
+    logEvent('pump.reject', 'zone ไม่ถูกต้อง', body);
+
     return NextResponse.json(
       { error: 'zone ต้องเป็นหนึ่งใน: herb, rice, sunnhemp, sunflower, potted' },
       { status: 400 }
@@ -39,6 +94,8 @@ export async function POST(request: Request) {
   }
 
   if (typeof body.state !== 'boolean') {
+    logEvent('pump.reject', 'state ไม่ใช่ boolean', body);
+
     return NextResponse.json(
       { error: 'state ต้องเป็น true หรือ false' },
       { status: 400 }
@@ -48,9 +105,17 @@ export async function POST(request: Request) {
   const zoneId = body.zone as ZoneId;
   const groupId = ZONE_GROUP_IDS[zoneId];
 
+  logEvent('pump.command', `สั่ง ${zoneId} = ${body.state ? 'ON' : 'OFF'}`, {
+    zone: zoneId,
+    state: body.state,
+    group_id: groupId,
+  });
+
   const forwarded = await forwardPumpCommand(zoneId, body.state);
 
   if (!forwarded.ok) {
+    logEvent('pump.error', forwarded.error, { zone: zoneId, group_id: groupId });
+
     return NextResponse.json(
       {
         ok: false,
@@ -60,6 +125,8 @@ export async function POST(request: Request) {
       { status: 502 }
     );
   }
+
+  logEvent('pump.ok', 'Node-RED รับคำสั่งแล้ว', { zone: zoneId, group_id: groupId });
 
   const zone = setZonePump(zoneId, body.state, 'local');
 

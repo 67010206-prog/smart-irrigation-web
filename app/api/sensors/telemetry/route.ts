@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+import { logEvent } from '@/lib/server/debugLog';
+
 import {
   getStore,
   updateWaterTank,
@@ -86,8 +88,16 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as Record<string, unknown>;
   } catch {
+    logEvent('telemetry.reject', 'body ไม่ใช่ JSON ที่ถูกต้อง');
+
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
+
+  // log ทุกครั้งที่ Node-RED/ESP32 ยิงเข้ามา (ดูได้ที่ /api/debug/logs)
+  logEvent('telemetry.in', 'POST /api/sensors/telemetry', {
+    source: request.headers.get('user-agent') ?? '-',
+    body,
+  });
 
   // 1) ค่าอากาศ — รับได้ทั้งแบบแบน และแบบก้อน weather (ตาม response ของ /api/sensors/latest)
   const weatherRecord =
@@ -104,6 +114,8 @@ export async function POST(request: Request) {
   );
 
   if (humidity !== null && (humidity < 0 || humidity > 100)) {
+    logEvent('telemetry.reject', `humidity นอกช่วง: ${humidity}`);
+
     return NextResponse.json(
       { error: 'humidity ต้องอยู่ระหว่าง 0-100' },
       { status: 400 }
@@ -135,6 +147,8 @@ export async function POST(request: Request) {
     waterTankPercent !== null &&
     (waterTankPercent < 0 || waterTankPercent > 100)
   ) {
+    logEvent('telemetry.reject', `tankWaterLevel นอกช่วง: ${waterTankPercent}`);
+
     return NextResponse.json(
       {
         error:
@@ -184,6 +198,14 @@ export async function POST(request: Request) {
     zones: updatedZones,
     updatedAt,
   } = getStore();
+
+  logEvent('telemetry.applied', 'อัปเดตค่าลง store แล้ว', {
+    temperatureC: weather.temperatureC,
+    humidity: weather.humidity,
+    etoMmPerDay: weather.etoMmPerDay,
+    tankWaterLevel: waterTank.levelPercent,
+    zones: zones ? Object.keys(zones) : [],
+  });
 
   return NextResponse.json({
     ok: true,

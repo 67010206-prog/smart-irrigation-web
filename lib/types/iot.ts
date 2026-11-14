@@ -67,4 +67,4 @@ export interface PumpLog {
 }
 
 /** หน้าที่แสดงใน Sidebar */
-export type PageKey = 'control' | 'docs' | 'storage';
+export type PageKey = 'control' | 'docs' | 'storage' | 'debug';

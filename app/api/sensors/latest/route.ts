@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 
 import { getPumpCommandAt, getStore, setZonePump } from '@/lib/server/store';
 import { fetchPumpStatus } from '@/lib/server/nodered';
+import { ensureMqttBridge } from '@/lib/server/mqttBridge';
+import { logEvent } from '@/lib/server/debugLog';
 
 import type { ZoneId } from '@/lib/types/iot';
 
@@ -13,28 +15,67 @@ export const dynamic = 'force-dynamic';
  */
 const REMOTE_STATUS_GRACE_MS = 20000;
 
+// ใช้ log เฉพาะตอนสถานะเปลี่ยน/ตอนอ่านไม่ได้ เพื่อไม่ให้ log ท่วมทุก 10 วินาที
+let lastStatusFetchOk: boolean | null = null;
+
 /** อ่านสถานะ ON/OFF จาก Node-RED แล้วปรับ pumpOn ใน store ให้ตรงของจริง */
 async function syncPumpStatus(): Promise<void> {
   const result = await fetchPumpStatus();
 
-  if (!result.ok) return;
+  if (!result.ok) {
+    if (lastStatusFetchOk !== false) {
+      logEvent('nodered.status', 'อ่านสถานะจาก Node-RED ไม่ได้', {
+        error: result.error,
+      });
+    }
+
+    lastStatusFetchOk = false;
+
+    return;
+  }
+
+  if (lastStatusFetchOk === false) {
+    logEvent('nodered.status', 'อ่านสถานะจาก Node-RED ได้ปกติอีกครั้ง');
+  }
+
+  lastStatusFetchOk = true;
 
   const commandAt = getPumpCommandAt();
   const now = Date.now();
+  const current = getStore().zones;
+  const changes: Array<{ zone: ZoneId; on: boolean }> = [];
+  const skipped: ZoneId[] = [];
 
   for (const [zone, on] of Object.entries(result.states) as [ZoneId, boolean][]) {
     const lastLocalCommand = commandAt[zone];
 
     if (lastLocalCommand !== undefined && now - lastLocalCommand < REMOTE_STATUS_GRACE_MS) {
+      skipped.push(zone);
       continue;
     }
 
-    setZonePump(zone, on, 'remote');
+    const before = current.find((item) => item.id === zone)?.pumpOn;
+
+    if (before !== on) {
+      setZonePump(zone, on, 'remote');
+      changes.push({ zone, on });
+    }
+  }
+
+  if (changes.length > 0) {
+    logEvent('nodered.status', 'ซิงก์สถานะปั๊มจาก Node-RED', {
+      states: result.states,
+      changes,
+      skippedInGrace: skipped.length ? skipped : undefined,
+    });
   }
 }
 
 /** GET /api/sensors/latest — ค่าล่าสุดของค่าอากาศและ 5 แปลง */
 export async function GET() {
+  // ฟังสถานะปั๊มจริงจาก MQTT (pump/control/groupX) — เริ่มครั้งแรกที่มีคนเรียก API
+  ensureMqttBridge();
+
   await syncPumpStatus();
 
   const { weather, waterTank, zones, updatedAt } = getStore();
