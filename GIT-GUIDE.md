@@ -161,3 +161,37 @@ GitHub ไม่รับรหัสผ่านแล้ว ให้ใช้
 
 **push ขึ้นไปแล้วแต่เว็บไม่เปลี่ยน**
 push โค้ดขึ้น GitHub ไม่ได้ deploy อัตโนมัติ ต้องมีคนไป deploy (เช่น Vercel) หรือรันบนเครื่องเอง
+
+---
+
+## 8) branch `main` ถูกป้องกันไว้ (Protected branch)
+
+repo นี้ตั้งกฎไว้ว่า **ห้าม push ตรงเข้า `main`** — ถ้าลองจะได้ error:
+
+```
+remote: error: GH006: Protected branch update failed for refs/heads/main.
+remote: - Changes must be made through a pull request.
+```
+
+วิธีทำงานที่ถูกต้องคือ **push ขึ้น branch ใหม่ แล้วเปิด Pull Request**
+
+```bash
+git checkout -b feature/ชื่อฟีเจอร์     # 1. แยก branch
+# ... แก้โค้ด แล้ว commit ...
+git push -u origin feature/ชื่อฟีเจอร์  # 2. push branch ขึ้น GitHub
+```
+
+จากนั้นเปิดลิงก์ที่ GitHub พิมพ์ให้ในผลลัพธ์ (รูปแบบ
+`https://github.com/67010206-prog/smart-irrigation-web/pull/new/feature/ชื่อฟีเจอร์`)
+→ กด **Create pull request** → รอ review → กด **Merge**
+
+หลัง merge แล้ว ดึงของล่าสุดกลับมาและกลับไปใช้ `main`:
+
+```bash
+git checkout main
+git pull origin main
+git branch -d feature/ชื่อฟีเจอร์
+```
+
+ทางเลือกอื่น: เจ้าของ repo ไปปิดกฎที่ GitHub → Settings → Branches → Branch protection rules
+(ไม่แนะนำ เพราะเสียประโยชน์ของการ review)
