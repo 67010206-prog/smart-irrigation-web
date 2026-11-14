@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { setZonePump } from '@/lib/server/store';
+import { ZONE_GROUP_IDS, forwardPumpCommand } from '@/lib/server/nodered';
 
 import type { ZoneId } from '@/lib/types/iot';
 
@@ -17,6 +18,9 @@ const ZONE_IDS: ZoneId[] = [
 /**
  * POST /api/control/pump
  * เปิด–ปิดปั๊มของแปลง: { "zone": "herb", "state": true }
+ *
+ * ขั้นตอน: แปลง zone → group_id แล้ว forward ไป Node-RED
+ * ถ้า Node-RED ไม่รับคำสั่ง จะไม่เปลี่ยนสถานะใน store (หน้าเว็บจะไม่ขึ้นว่าสำเร็จ)
  */
 export async function POST(request: Request) {
   let body: { zone?: unknown; state?: unknown };
@@ -41,7 +45,27 @@ export async function POST(request: Request) {
     );
   }
 
-  const zone = setZonePump(body.zone as ZoneId, body.state);
+  const zoneId = body.zone as ZoneId;
+  const groupId = ZONE_GROUP_IDS[zoneId];
 
-  return NextResponse.json({ ok: true, zone });
+  const forwarded = await forwardPumpCommand(zoneId, body.state);
+
+  if (!forwarded.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: forwarded.error,
+        forwarded: { group_id: groupId, request: body.state },
+      },
+      { status: 502 }
+    );
+  }
+
+  const zone = setZonePump(zoneId, body.state, 'local');
+
+  return NextResponse.json({
+    ok: true,
+    zone,
+    forwarded: { group_id: groupId, request: body.state },
+  });
 }

@@ -27,10 +27,16 @@ export interface Weather {
   etoMmPerDay: number;
 }
 
+/** ถังน้ำหลักของระบบ */
+export interface WaterTank {
+  levelPercent: number; // ระดับน้ำในถัง (%)
+}
+
 /** ข้อมูลที่ GET /api/sensors/latest ตอบกลับ */
 export interface FarmSnapshot {
   weather: Weather;
   zones: Zone[];
+  waterTank: WaterTank;
   updatedAt: string;
 }
 

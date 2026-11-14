@@ -1,4 +1,10 @@
-import type { Weather, Zone, ZoneId, ZoneValues } from '../types/iot';
+import type {
+  WaterTank,
+  Weather,
+  Zone,
+  ZoneId,
+  ZoneValues,
+} from '../types/iot';
 
 /**
  * ที่เก็บข้อมูลฝั่ง server (in-memory)
@@ -8,8 +14,11 @@ import type { Weather, Zone, ZoneId, ZoneValues } from '../types/iot';
 
 interface FarmStore {
   weather: Weather;
+  waterTank: WaterTank;
   zones: Zone[];
   updatedAt: string;
+  /** เวลาที่สั่งปั๊มล่าสุดของแต่ละแปลง (ใช้กันสถานะจาก Node-RED ย้อนกลับมาทับ) */
+  pumpCommandAt: Partial<Record<ZoneId, number>>;
 }
 
 // ค่าเริ่มต้นของการ์ดแถวบน
@@ -17,6 +26,11 @@ const initialWeather: Weather = {
   temperatureC: 29.5,
   humidity: 70,
   etoMmPerDay: 4.2,
+};
+
+// ค่าเริ่มต้นของถังน้ำหลัก (แก้ตัวเลขที่แสดงบนหน้าเว็บได้ที่นี่)
+const initialWaterTank: WaterTank = {
+  levelPercent: 65,
 };
 
 // ค่าเริ่มต้นของ 5 แปลง (แก้ตัวเลขที่แสดงบนหน้าเว็บได้ที่นี่)
@@ -39,8 +53,10 @@ const globalStore = globalThis as unknown as { farmStore?: FarmStore };
 function createStore(): FarmStore {
   return {
     weather: { ...initialWeather },
+    waterTank: { ...initialWaterTank },
     zones: initialZones.map((zone) => ({ ...zone, values: { ...zone.values } })),
     updatedAt: new Date().toISOString(),
+    pumpCommandAt: {},
   };
 }
 
@@ -50,7 +66,13 @@ export function getStore(): FarmStore {
     globalStore.farmStore = createStore();
   }
 
-  return globalStore.farmStore;
+  const store = globalStore.farmStore;
+
+  // กันกรณี store ถูกสร้างจากโค้ดเวอร์ชันก่อนหน้า (dev hot reload) แล้วยังไม่มีฟิลด์ใหม่
+  if (!store.waterTank) store.waterTank = { ...initialWaterTank };
+  if (!store.pumpCommandAt) store.pumpCommandAt = {};
+
+  return store;
 }
 
 /** อัปเดตค่าอากาศ (ส่งเฉพาะค่าที่เปลี่ยน) */
@@ -61,6 +83,16 @@ export function updateWeather(patch: Partial<Weather>): Weather {
   store.updatedAt = new Date().toISOString();
 
   return store.weather;
+}
+
+/** อัปเดตระดับน้ำในถังหลัก */
+export function updateWaterTank(patch: Partial<WaterTank>): WaterTank {
+  const store = getStore();
+
+  store.waterTank = { ...store.waterTank, ...patch };
+  store.updatedAt = new Date().toISOString();
+
+  return store.waterTank;
 }
 
 /** อัปเดตค่าของแปลงตาม id (ส่งเฉพาะค่าที่เปลี่ยน) */
@@ -79,15 +111,35 @@ export function updateZoneValues(
   return zone;
 }
 
-/** เปิด–ปิดปั๊มของแปลง */
-export function setZonePump(id: ZoneId, on: boolean): Zone | undefined {
+/**
+ * เปิด–ปิดปั๊มของแปลง
+ * source = 'local' คือผู้ใช้สั่งจากหน้าเว็บ (จะบันทึกเวลาไว้กันสถานะเก่าทับ)
+ * source = 'remote' คือค่าที่อ่านมาจาก Node-RED
+ */
+export function setZonePump(
+  id: ZoneId,
+  on: boolean,
+  source: 'local' | 'remote' = 'local'
+): Zone | undefined {
   const store = getStore();
   const zone = store.zones.find((item) => item.id === id);
 
   if (!zone) return undefined;
 
+  if (source === 'local') {
+    store.pumpCommandAt[id] = Date.now();
+  }
+
+  // ค่าไม่เปลี่ยน = ไม่ต้องขยับ updatedAt (กัน updatedAt ใหม่ทุกครั้งที่ poll)
+  if (zone.pumpOn === on) return zone;
+
   zone.pumpOn = on;
   store.updatedAt = new Date().toISOString();
 
   return zone;
+}
+
+/** เวลาที่สั่งปั๊มล่าสุดของแต่ละแปลง */
+export function getPumpCommandAt(): Partial<Record<ZoneId, number>> {
+  return getStore().pumpCommandAt ?? {};
 }

@@ -14,6 +14,7 @@ import type {
   PageKey,
   PumpLog,
   SensorPoint,
+  WaterTank,
   Weather,
   Zone,
   ZoneId,
@@ -72,6 +73,7 @@ export default function Dashboard() {
   // ==============================
 
   const [weather, setWeather] = useState<Weather>(EMPTY_WEATHER);
+  const [waterTank, setWaterTank] = useState<WaterTank | null>(null);
   const [zones, setZones] = useState<Zone[]>([]);
   const [busyZone, setBusyZone] = useState<ZoneId | null>(null);
 
@@ -121,6 +123,7 @@ export default function Dashboard() {
 
       setDeviceOnline(true);
       setWeather(snapshot.weather);
+      setWaterTank(snapshot.waterTank ?? null);
       setZones(snapshot.zones);
       setPumpOn(snapshot.zones.some((zone) => zone.pumpOn));
 
@@ -283,6 +286,7 @@ export default function Dashboard() {
         {page === 'control' ? (
           <Control
             weather={weather}
+            waterTank={waterTank}
             zones={zones}
             busyZone={busyZone}
             onTogglePump={toggleZonePump}
