@@ -42,7 +42,8 @@ export async function GET() {
   return NextResponse.json(
     {
       weather,
-      // ชื่อหลักตามสเปก Node-RED + ก้อนข้อมูลเต็มของถัง
+      // ชื่อตามสเปก Node-RED + ก้อนข้อมูลเต็มของถัง
+      tankWaterLevelPercent: waterTank.levelPercent,
       tankWaterLevel: waterTank.levelPercent,
       waterTank,
       zones,

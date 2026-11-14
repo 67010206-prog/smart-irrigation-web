@@ -50,7 +50,7 @@ npm start
 | ส่งค่าจากเซนเซอร์/ESP32 (ทั้งหมด) | `POST /api/sensors/telemetry` | `{ temperature, humidity, etoMmPerDay, zones: {...} }` |
 | ส่งค่าแค่แปลงเดียว | `POST /api/sensors/telemetry` | `{ "zones": { "herb": { "soilWaterKpa": 30 } } }` |
 | เปิด–ปิดปั๊มของแปลง | `POST /api/control/pump` | `{ "zone": "herb", "state": true }` |
-| ส่งระดับน้ำในถัง (Node-RED / MQTT node6) | `POST /api/sensors/telemetry` | `{ "tankWaterLevel": 75 }` |
+| ส่งระดับน้ำในถัง (Node-RED / MQTT node6) | `POST /api/sensors/telemetry` | `{ "tankWaterLevelPercent": 75 }` |
 | ตรวจว่าระบบรับค่าจริงไหม | `GET /api/sensors/latest` แล้วดู `updatedAt` | – |
 
 > ทุก endpoint ใช้ base URL เดียวกัน: `http://localhost:3000` (หรือ IP เครื่องในวง LAN เมื่อเรียกจาก ESP32)
@@ -121,8 +121,8 @@ curl -X POST http://localhost:3000/api/sensors/telemetry \
 - ทุกฟิลด์ **ไม่บังคับ** — ส่งเฉพาะค่าที่มีก็ได้ ค่าที่ไม่ส่งจะคงค่าเดิม
 - ค่าที่ไม่ใช่ตัวเลขจะถูกข้าม (ไม่ทำให้ทั้ง request พัง)
 - `humidity` ต้องอยู่ระหว่าง `0–100` ไม่งั้นได้ `400`
-- `tankWaterLevel` (ระดับน้ำในถัง `%`) ต้องอยู่ระหว่าง `0–100` ไม่งั้นได้ `400`
-  — รับชื่ออื่นได้ด้วย: `waterTankPercent` หรือ `waterTank: { levelPercent }`
+- `tankWaterLevelPercent` (ระดับน้ำในถัง `%`) ต้องอยู่ระหว่าง `0–100` ไม่งั้นได้ `400`
+  — รับชื่ออื่นได้ด้วย: `tankWaterLevel`, `waterTankPercent` หรือ `waterTank: { levelPercent }`
 - `POST` รับ payload รูปแบบเดียวกับ response ของ `GET /api/sensors/latest` ได้เลย
   คือ `{ weather: { temperatureC, humidity, etoMmPerDay }, waterTank: { levelPercent }, zones: [{ id, values }] }`
 - `zones` ที่ไม่รู้จัก (เช่น `corn`) จะถูกข้าม
