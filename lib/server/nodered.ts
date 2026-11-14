@@ -143,7 +143,7 @@ export function parsePumpStatus(
   if (!Array.isArray(payload) && payload && typeof payload === 'object') {
     const record = payload as Record<string, unknown>;
 
-    for (const key of ['pumpStates', 'requests'] as const) {
+    for (const key of ['pumpStates', 'pumpStatus', 'requests'] as const) {
       const map = record[key];
 
       if (!map || typeof map !== 'object' || Array.isArray(map)) continue;
