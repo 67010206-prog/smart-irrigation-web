@@ -117,7 +117,10 @@ function parseOnOff(value: unknown): boolean | null {
 
 /**
  * แปลง payload สถานะจาก Node-RED เป็น map ของแปลง
- * รองรับ { "group1": "ON", ... } และ array [{ group_id, request }]
+ * รองรับ
+ *  - { "group1": "ON", ... }
+ *  - array [{ group_id, request }]
+ *  - สถานะเต็มของ flow: { waterLevel, requests:{group1:false,...}, pumpStates:{...}, runningGroups:[] }
  */
 export function parsePumpStatus(
   payload: unknown
@@ -135,6 +138,42 @@ export function parsePumpStatus(
 
     result[zone] = parsed;
   };
+
+  // สถานะเต็มจาก Node-RED: ใช้ pumpStates ก่อน แล้วค่อย requests
+  if (!Array.isArray(payload) && payload && typeof payload === 'object') {
+    const record = payload as Record<string, unknown>;
+
+    for (const key of ['pumpStates', 'requests'] as const) {
+      const map = record[key];
+
+      if (!map || typeof map !== 'object' || Array.isArray(map)) continue;
+
+      for (const [group, value] of Object.entries(
+        map as Record<string, unknown>
+      )) {
+        addEntry(group, value);
+      }
+
+      if (Object.keys(result).length > 0) return result;
+    }
+
+    // ถ้ามีแต่ runningGroups: กลุ่มที่อยู่ในลิสต์ = เปิด, ที่เหลือ = ปิด
+    if (Array.isArray(record.runningGroups)) {
+      const running = record.runningGroups.filter(
+        (item): item is string => typeof item === 'string'
+      );
+
+      for (const group of running) addEntry(group, true);
+
+      for (const group of Object.values(ZONE_GROUP_IDS)) {
+        const zone = GROUP_ZONE_IDS[group.toLowerCase()];
+
+        if (zone && result[zone] === undefined) result[zone] = false;
+      }
+
+      return result;
+    }
+  }
 
   if (Array.isArray(payload)) {
     for (const item of payload) {
