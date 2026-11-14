@@ -6,7 +6,9 @@ import {
   ThermometerSun,
 } from 'lucide-react';
 
-import type { Zone, ZoneId, ZoneValues } from '../lib/types/iot';
+import WaterTankCard from './WaterTank';
+
+import type { WaterTank, Zone, ZoneId, ZoneValues } from '../lib/types/iot';
 
 interface ControlProps {
   weather: {
@@ -14,6 +16,7 @@ interface ControlProps {
     humidity: number;
     etoMmPerDay: number;
   };
+  waterTank: WaterTank | null;
   zones: Zone[];
   busyZone: ZoneId | null;
   onTogglePump: (zoneId: ZoneId) => void;
@@ -135,6 +138,7 @@ function ZoneCard({
 
 export default function Control({
   weather,
+  waterTank,
   zones,
   busyZone,
   onTogglePump,
@@ -216,6 +220,9 @@ export default function Control({
           <div className="metric-note">ค่าการคายระเหยอ้างอิง</div>
         </article>
       </div>
+
+      {/* ถังน้ำหลัก */}
+      <WaterTankCard levelPercent={waterTank?.levelPercent ?? null} />
 
       {/* สถานะแปลงพืช */}
       <div className="plant-zones-heading">

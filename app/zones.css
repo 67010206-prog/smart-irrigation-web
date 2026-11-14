@@ -209,3 +209,65 @@
     padding: 14px;
   }
 }
+
+/* ===== การ์ดถังน้ำหลัก (หน้า Control) ===== */
+
+.tank-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.tank-panel .plant-card-head {
+  align-items: flex-start;
+}
+
+.tank-chip {
+  margin-left: auto;
+}
+
+.status-warn {
+  color: #b3843c;
+  background: #fff6e7;
+}
+
+.status-danger {
+  color: #c0675d;
+  background: #fdf3f2;
+}
+
+.status-neutral {
+  color: #7f8d99;
+  background: #f3f6f8;
+}
+
+.tank-row {
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: center;
+}
+
+.tank-visual {
+  height: 124px;
+}
+
+.tank-visual .sim-tank-marker em {
+  right: 4px;
+  top: -15px;
+  font-size: 7px;
+}
+
+@media (max-width: 650px) {
+  .tank-row {
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .tank-visual {
+    height: 150px;
+  }
+
+  .tank-chip {
+    font-size: 8px;
+  }
+}

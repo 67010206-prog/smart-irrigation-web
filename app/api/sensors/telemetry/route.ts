@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import {
   getStore,
+  updateWaterTank,
   updateWeather,
   updateZoneValues,
 } from '@/lib/server/store';
@@ -70,7 +71,31 @@ export async function POST(request: Request) {
     ...(etoMmPerDay !== null ? { etoMmPerDay } : {}),
   });
 
-  // 2) ค่าของแต่ละแปลง (ไม่ส่งมาก็ได้)
+  // 2) ระดับน้ำในถังหลัก (ส่งได้ทั้ง waterTankPercent และ waterTank.levelPercent)
+  const waterTankRecord =
+    body.waterTank && typeof body.waterTank === 'object'
+      ? (body.waterTank as Record<string, unknown>)
+      : null;
+
+  const waterTankPercent = toNumber(
+    body.waterTankPercent ?? waterTankRecord?.levelPercent
+  );
+
+  if (
+    waterTankPercent !== null &&
+    (waterTankPercent < 0 || waterTankPercent > 100)
+  ) {
+    return NextResponse.json(
+      { error: 'waterTankPercent ต้องอยู่ระหว่าง 0-100' },
+      { status: 400 }
+    );
+  }
+
+  if (waterTankPercent !== null) {
+    updateWaterTank({ levelPercent: waterTankPercent });
+  }
+
+  // 3) ค่าของแต่ละแปลง (ไม่ส่งมาก็ได้)
   const zones = body.zones as
     | Partial<Record<ZoneId, Record<string, unknown>>>
     | undefined;
@@ -102,7 +127,18 @@ export async function POST(request: Request) {
     updateZoneValues(id, values);
   }
 
-  const { weather, zones: updatedZones, updatedAt } = getStore();
+  const {
+    weather,
+    waterTank,
+    zones: updatedZones,
+    updatedAt,
+  } = getStore();
 
-  return NextResponse.json({ ok: true, weather, zones: updatedZones, updatedAt });
+  return NextResponse.json({
+    ok: true,
+    weather,
+    waterTank,
+    zones: updatedZones,
+    updatedAt,
+  });
 }
