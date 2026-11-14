@@ -71,14 +71,18 @@ export async function POST(request: Request) {
     ...(etoMmPerDay !== null ? { etoMmPerDay } : {}),
   });
 
-  // 2) ระดับน้ำในถังหลัก (ส่งได้ทั้ง waterTankPercent และ waterTank.levelPercent)
+  // 2) ระดับน้ำในถังหลัก
+  // ชื่อหลักคือ tankWaterLevel (ตามสเปก Node-RED) แต่ยังรับชื่อเดิมได้
+  // คือ waterTankPercent และ waterTank.levelPercent
   const waterTankRecord =
     body.waterTank && typeof body.waterTank === 'object'
       ? (body.waterTank as Record<string, unknown>)
       : null;
 
   const waterTankPercent = toNumber(
-    body.waterTankPercent ?? waterTankRecord?.levelPercent
+    body.tankWaterLevel ??
+      body.waterTankPercent ??
+      waterTankRecord?.levelPercent
   );
 
   if (
@@ -86,7 +90,7 @@ export async function POST(request: Request) {
     (waterTankPercent < 0 || waterTankPercent > 100)
   ) {
     return NextResponse.json(
-      { error: 'waterTankPercent ต้องอยู่ระหว่าง 0-100' },
+      { error: 'tankWaterLevel ต้องอยู่ระหว่าง 0-100' },
       { status: 400 }
     );
   }
@@ -137,6 +141,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     weather,
+    tankWaterLevel: waterTank.levelPercent,
     waterTank,
     zones: updatedZones,
     updatedAt,
