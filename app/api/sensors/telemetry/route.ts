@@ -4,10 +4,13 @@ import { logEvent } from '@/lib/server/debugLog';
 
 import {
   getStore,
+  setZonePump,
   updateWaterTank,
   updateWeather,
   updateZoneValues,
 } from '@/lib/server/store';
+
+import { parsePumpStatus } from '@/lib/server/nodered';
 
 import type { ZoneId, ZoneValues } from '@/lib/types/iot';
 
@@ -140,6 +143,8 @@ export async function POST(request: Request) {
     body.tankWaterLevelPercent ??
       body.tankWaterLevel ??
       body.waterTankPercent ??
+      // payload สถานะของ flow Node-RED ใช้ชื่อ waterLevel
+      body.waterLevel ??
       waterTankRecord?.levelPercent
   );
 
@@ -190,6 +195,24 @@ export async function POST(request: Request) {
     }
 
     updateZoneValues(id, values);
+  }
+
+  // 4) สถานะปั๊มจริงจาก Node-RED (pumpStates / requests / runningGroups)
+  //    Node-RED เป็นฝ่ายถูก: ถ้าส่ง false มา = ยกเลิกสถานะที่กดไว้บนเว็บทันที
+  const pumpStates = parsePumpStatus(body);
+  const switched: Array<{ zone: ZoneId; on: boolean }> = [];
+
+  for (const [zone, on] of Object.entries(pumpStates) as [ZoneId, boolean][]) {
+    const before = getStore().zones.find((item) => item.id === zone)?.pumpOn;
+
+    if (before === on) continue;
+
+    setZonePump(zone, on, 'remote');
+    switched.push({ zone, on });
+  }
+
+  if (switched.length > 0) {
+    logEvent('pump.state', 'ปรับสถานะปั๊มตาม Node-RED', { switched });
   }
 
   const {

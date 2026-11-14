@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { getPumpCommandAt, getStore, setZonePump } from '@/lib/server/store';
-import { fetchPumpStatus } from '@/lib/server/nodered';
+import { ZONE_GROUP_IDS, fetchPumpStatus } from '@/lib/server/nodered';
 import { ensureMqttBridge } from '@/lib/server/mqttBridge';
 import { logEvent } from '@/lib/server/debugLog';
 
@@ -10,8 +10,9 @@ import type { ZoneId } from '@/lib/types/iot';
 export const dynamic = 'force-dynamic';
 
 /**
- * หลังผู้ใช้สั่งปั๊มเอง กี่ ms ที่จะยังไม่รับสถานะจาก Node-RED
+ * หลังผู้ใช้สั่งปั๊มเอง กี่ ms ที่จะยังไม่รับสถานะ "เปิด" จาก Node-RED
  * (กันกรณีอุปกรณ์ยังไม่สลับรีเลย์ แล้ว poll รอบถัดไปดึงค่าเก่ามาทับ)
+ * ส่วนสถานะ "ปิด" จาก Node-RED ใช้ทันทีเสมอ เพราะถือว่า Node-RED เป็นฝ่ายถูก
  */
 const REMOTE_STATUS_GRACE_MS = 20000;
 
@@ -49,7 +50,12 @@ async function syncPumpStatus(): Promise<void> {
   for (const [zone, on] of Object.entries(result.states) as [ZoneId, boolean][]) {
     const lastLocalCommand = commandAt[zone];
 
-    if (lastLocalCommand !== undefined && now - lastLocalCommand < REMOTE_STATUS_GRACE_MS) {
+    // หน่วงเฉพาะข่าว "เปิด" — ข่าว "ปิด" จาก Node-RED ต้องชนะคำสั่งบนเว็บทันที
+    if (
+      on === true &&
+      lastLocalCommand !== undefined &&
+      now - lastLocalCommand < REMOTE_STATUS_GRACE_MS
+    ) {
       skipped.push(zone);
       continue;
     }
@@ -80,6 +86,13 @@ export async function GET() {
 
   const { weather, waterTank, zones, updatedAt } = getStore();
 
+  // สถานะปั๊มแบบ group_id (ตรงกับที่ Node-RED ใช้) สำหรับฝั่งที่อ้าง group เป็นหลัก
+  const pumpStatus: Record<string, boolean> = {};
+
+  for (const zone of zones) {
+    pumpStatus[ZONE_GROUP_IDS[zone.id]] = zone.pumpOn;
+  }
+
   return NextResponse.json(
     {
       weather,
@@ -87,6 +100,7 @@ export async function GET() {
       tankWaterLevelPercent: waterTank.levelPercent,
       tankWaterLevel: waterTank.levelPercent,
       waterTank,
+      pumpStatus,
       zones,
       updatedAt,
     },

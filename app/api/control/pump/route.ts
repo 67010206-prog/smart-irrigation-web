@@ -3,6 +3,10 @@ import { NextResponse } from 'next/server';
 import { getStore, setZonePump } from '@/lib/server/store';
 import { ZONE_GROUP_IDS, forwardPumpCommand } from '@/lib/server/nodered';
 import { ensureMqttBridge, getMqttStatus } from '@/lib/server/mqttBridge';
+import {
+  enqueuePumpCommand,
+  finishCommand,
+} from '@/lib/server/commandQueue';
 import { logEvent } from '@/lib/server/debugLog';
 
 import type { ZoneId } from '@/lib/types/iot';
@@ -105,10 +109,14 @@ export async function POST(request: Request) {
   const zoneId = body.zone as ZoneId;
   const groupId = ZONE_GROUP_IDS[zoneId];
 
+  // ทุกคำสั่งถูกบันทึกในคิวก่อน → ถ้าส่งตรงไม่สำเร็จ Node-RED ยังมารับได้
+  const command = enqueuePumpCommand(zoneId, body.state);
+
   logEvent('pump.command', `สั่ง ${zoneId} = ${body.state ? 'ON' : 'OFF'}`, {
     zone: zoneId,
     state: body.state,
     group_id: groupId,
+    commandId: command.commandId,
   });
 
   const forwarded = await forwardPumpCommand(zoneId, body.state);
@@ -116,10 +124,20 @@ export async function POST(request: Request) {
   if (!forwarded.ok) {
     logEvent('pump.error', forwarded.error, { zone: zoneId, group_id: groupId });
 
+    // คำสั่งยังค้างอยู่ในคิว (status = pending) ให้ Node-RED มาดึงผ่าน
+    // GET /api/control/pump/pending แล้วค่อย ack กลับมา
     return NextResponse.json(
       {
         ok: false,
         error: forwarded.error,
+        queued: true,
+        command: {
+          commandId: command.commandId,
+          zone: command.zone,
+          group_id: command.group_id,
+          state: command.state,
+          status: command.status,
+        },
         forwarded: { group_id: groupId, request: body.state },
       },
       { status: 502 }
@@ -128,11 +146,21 @@ export async function POST(request: Request) {
 
   logEvent('pump.ok', 'Node-RED รับคำสั่งแล้ว', { zone: zoneId, group_id: groupId });
 
+  // ส่งตรงสำเร็จ = ไม่ต้องให้ Node-RED ดึงซ้ำ
+  finishCommand(command.commandId, 'done', 'ส่งตรงไป Node-RED สำเร็จ');
+
   const zone = setZonePump(zoneId, body.state, 'local');
 
   return NextResponse.json({
     ok: true,
     zone,
+    command: {
+      commandId: command.commandId,
+      zone: command.zone,
+      group_id: command.group_id,
+      state: command.state,
+      status: 'done' as const,
+    },
     forwarded: { group_id: groupId, request: body.state },
   });
 }
