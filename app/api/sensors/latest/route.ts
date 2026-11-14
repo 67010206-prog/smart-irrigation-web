@@ -40,7 +40,15 @@ export async function GET() {
   const { weather, waterTank, zones, updatedAt } = getStore();
 
   return NextResponse.json(
-    { weather, waterTank, zones, updatedAt },
+    {
+      weather,
+      // ชื่อตามสเปก Node-RED + ก้อนข้อมูลเต็มของถัง
+      tankWaterLevelPercent: waterTank.levelPercent,
+      tankWaterLevel: waterTank.levelPercent,
+      waterTank,
+      zones,
+      updatedAt,
+    },
     { headers: { 'Cache-Control': 'no-store' } }
   );
 }
