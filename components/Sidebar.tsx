@@ -1,6 +1,7 @@
 
 import {
   BookOpen,
+  Bug,
   ChevronLeft,
   Leaf,
   LayoutDashboard,
@@ -86,6 +87,16 @@ export default function Sidebar({
         >
           <Database size={19} />
           <span>Data Storage</span>
+        </button>
+
+        {/* หน้า Debug Log */}
+        <button
+          className={`nav-item ${page === 'debug' ? 'active' : ''}`}
+          onClick={() => setPage('debug')}
+          title="Debug Log"
+        >
+          <Bug size={19} />
+          <span>Debug Log</span>
         </button>
 
       </nav>

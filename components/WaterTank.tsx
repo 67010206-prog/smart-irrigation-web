@@ -4,6 +4,19 @@ import { AlertTriangle, CheckCircle2, Droplets, Waves } from 'lucide-react';
 const LOW_LEVEL = 40; // ต่ำกว่า 40% = ควรเตรียมเติมน้ำ
 const CRITICAL_LEVEL = 20; // ต่ำกว่า 20% = วิกฤต
 
+// ความจุถังน้ำ (ลิตร) — ใช้คำนวณปริมาณน้ำคงเหลือจาก %
+const TANK_CAPACITY_LITERS = 3000;
+
+/** 0.65 → "0.65" | 1 → "1.00" */
+function ratioText(level: number): string {
+  return (level / 100).toFixed(2);
+}
+
+/** 1950 → "1,950" */
+function litersText(liters: number): string {
+  return Math.round(liters).toLocaleString('en-US');
+}
+
 interface WaterTankCardProps {
   levelPercent: number | null;
 }
@@ -52,6 +65,9 @@ export default function WaterTankCard({ levelPercent }: WaterTankCardProps) {
       : Math.max(0, Math.min(100, levelPercent));
 
   const status = buildStatus(level);
+
+  // 0.65 × 3,000 L = 1,950 L
+  const liters = level === null ? null : (level / 100) * TANK_CAPACITY_LITERS;
 
   return (
     <article className="panel tank-panel">
@@ -126,6 +142,24 @@ export default function WaterTankCard({ levelPercent }: WaterTankCardProps) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ผลการคำนวณ: 0.65 × 3,000 L = 1,950 L */}
+      <div className="tank-math">
+        <span className="tank-math-label">
+          <Waves size={13} /> น้ำคงเหลือในถัง
+        </span>
+
+        <span className="tank-math-formula">
+          {level === null ? '--' : ratioText(level)} ×{' '}
+          {TANK_CAPACITY_LITERS.toLocaleString('en-US')} L
+        </span>
+
+        <span className="tank-math-eq">=</span>
+
+        <strong className="tank-math-result">
+          {liters === null ? '--' : litersText(liters)} <em>L</em>
+        </strong>
       </div>
     </article>
   );

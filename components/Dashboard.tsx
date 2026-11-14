@@ -7,6 +7,7 @@ import Topbar from './Topbar';
 import Control from './Control';
 import Docs from './Docs';
 import DataStorage from './DataStorage';
+import DebugLog from './DebugLog';
 
 import { fetchLatestSensors, setZonePumpState } from '../lib/services/api';
 
@@ -297,6 +298,8 @@ export default function Dashboard() {
           <Docs />
         ) : page === 'storage' ? (
           <DataStorage history={history} pumpLogs={pumpLogs} />
+        ) : page === 'debug' ? (
+          <DebugLog />
         ) : null}
       </main>
     </div>
