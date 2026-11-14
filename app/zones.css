@@ -20,16 +20,17 @@
 }
 
 .plant-zones-heading h2 {
-  font-size: 15px;
-  color: #304238;
-  margin-bottom: 4px;
-  letter-spacing: -0.2px;
+  font-size: 20px;
+  color: #2b3f34;
+  margin-bottom: 5px;
+  letter-spacing: -0.3px;
 }
 
 .plant-zones-heading p {
   margin: 0;
-  color: #9aa59e;
-  font-size: 10px;
+  color: #6f8076;
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .plant-grid {
@@ -67,15 +68,16 @@
 }
 
 .plant-card-head h2 {
-  font-size: 14px;
-  margin: 0 0 3px;
-  color: #2d4035;
-  letter-spacing: -0.2px;
+  font-size: 18px;
+  margin: 0 0 4px;
+  color: #263c31;
+  letter-spacing: -0.3px;
 }
 
 .plant-card-head span {
-  font-size: 9px;
-  color: #9aa59e;
+  font-size: 12.5px;
+  color: #75867b;
+  line-height: 1.5;
 }
 
 .plant-values {
@@ -95,22 +97,24 @@
 }
 
 .value-label {
-  font-size: 9px;
-  color: #93a098;
-  letter-spacing: 0.3px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #65786c;
+  letter-spacing: 0.2px;
+  line-height: 1.45;
 }
 
 .value-number {
-  font-size: 21px;
+  font-size: 25px;
   font-weight: 700;
   color: #2b4136;
   letter-spacing: -0.6px;
 }
 
 .value-unit {
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 500;
-  color: #8b9890;
+  color: #6f8076;
   margin-left: 4px;
   letter-spacing: 0;
 }

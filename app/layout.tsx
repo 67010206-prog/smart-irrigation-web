@@ -6,6 +6,7 @@ import './zones.css';
 import './simulations.css';
 import './docs.css';
 import './teaching.css';
+import './docs-type.css';
 
 export const metadata: Metadata = {
   title: 'Smart Irrigation | ระบบให้น้ำอัจฉริยะ',

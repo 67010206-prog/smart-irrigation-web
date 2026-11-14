@@ -1,0 +1,669 @@
+/* ===== ขยายขนาดฟอนต์หน้า Docs & Learning (~×1.5) ===== */
+
+/* ---------- หัวหน้า / การ์ดนับบทเรียน ---------- */
+
+.docs-page h1 {
+  font-size: 38px;
+  letter-spacing: -1px;
+}
+
+.docs-page .eyebrow {
+  font-size: 13px;
+  letter-spacing: 1.6px;
+}
+
+.docs-page .page-heading-row p {
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.docs-page .docs-count {
+  padding: 11px 16px;
+  gap: 11px;
+}
+
+.docs-page .docs-count strong {
+  font-size: 19px;
+}
+
+.docs-page .docs-count span {
+  font-size: 12px;
+}
+
+/* ---------- แถบเมนูด้านซ้าย ---------- */
+
+.docs-page .docs-layout {
+  grid-template-columns: 262px minmax(0, 1fr);
+  gap: 19px;
+}
+
+.docs-page .docs-search {
+  height: 44px;
+  padding: 0 11px;
+  margin-bottom: 21px;
+}
+
+.docs-page .docs-search input {
+  font-size: 15px;
+}
+
+.docs-page .docs-nav-label {
+  font-size: 12px;
+  letter-spacing: 1.1px;
+  margin: 0 8px 9px;
+}
+
+.docs-page .docs-nav-item {
+  height: 44px;
+  font-size: 13.5px;
+  gap: 10px;
+}
+
+.docs-page .empty-search {
+  font-size: 13px;
+}
+
+.docs-page .docs-progress .progress-title {
+  font-size: 13px;
+}
+
+.docs-page .docs-progress .progress-title strong {
+  font-size: 12px;
+}
+
+.docs-page .docs-progress small {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ---------- หัวบทความ ---------- */
+
+.docs-page .article-topline,
+.docs-page .article-bottom {
+  font-size: 12px;
+}
+
+.docs-page .article-category {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.docs-page .article-title-row {
+  margin: 22px 0 19px;
+}
+
+.docs-page .article-title-row h2 {
+  font-size: 31px;
+  letter-spacing: -0.7px;
+}
+
+.docs-page .article-title-row p {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ---------- เนื้อหาบทความ ---------- */
+
+.docs-page .article-body {
+  font-size: 16.5px;
+  line-height: 1.9;
+}
+
+.docs-page .article-body h3 {
+  font-size: 19px;
+  margin: 28px 0 11px;
+}
+
+.docs-page .article-body p {
+  margin-bottom: 14px;
+}
+
+.docs-page .article-body li {
+  margin: 7px 0;
+  line-height: 1.85;
+}
+
+.docs-page .article-body ul,
+.docs-page .article-body ol {
+  padding-left: 24px;
+  margin: 10px 0 18px;
+}
+
+.docs-page .article-body code {
+  font-size: 0.92em;
+}
+
+.docs-page .article-lead {
+  font-size: 18px;
+  line-height: 1.85;
+  margin-bottom: 22px !important;
+}
+
+/* ---------- กล่อง / การ์ดประกอบ ---------- */
+
+.docs-page .intro-highlight strong {
+  font-size: 16px;
+}
+
+.docs-page .intro-highlight p {
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+
+.docs-page .doc-callout {
+  padding: 14px 15px;
+  gap: 12px;
+}
+
+.docs-page .doc-callout strong {
+  font-size: 15px;
+}
+
+.docs-page .doc-callout span {
+  font-size: 13.5px;
+  line-height: 1.75;
+}
+
+.docs-page .topic-table > div {
+  padding: 12px 14px;
+}
+
+.docs-page .topic-table code,
+.docs-page .topic-table span {
+  font-size: 13.5px;
+}
+
+.docs-page .code-sample {
+  font-size: 15px;
+}
+
+.docs-page .hardware-list strong {
+  font-size: 13.5px;
+}
+
+.docs-page .hardware-list span {
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.docs-page .mode-doc-grid h3 {
+  font-size: 15px;
+}
+
+.docs-page .mode-doc-grid p {
+  font-size: 13.5px;
+  line-height: 1.75;
+}
+
+.docs-page .checklist-doc > div {
+  font-size: 15px;
+  gap: 10px;
+}
+
+.docs-page .architecture-step strong {
+  font-size: 13.5px;
+}
+
+.docs-page .architecture-step span {
+  font-size: 12px;
+}
+
+/* ---------- ตาราง ---------- */
+
+.docs-page .doc-table {
+  font-size: 15px;
+  margin: 16px 0 20px;
+}
+
+.docs-page .doc-table th {
+  font-size: 13px;
+  padding: 10px 12px;
+}
+
+.docs-page .doc-table td {
+  font-size: 15px;
+  padding: 10px 12px;
+  line-height: 1.8;
+}
+
+/* ---------- กล่องสูตร / ขั้นตอน / แบบฝึกหัด / อภิธาน ---------- */
+
+.docs-page .formula {
+  padding: 15px 17px;
+  gap: 8px;
+}
+
+.docs-page .formula code {
+  font-size: 19px;
+}
+
+.docs-page .formula span {
+  font-size: 13.5px;
+  line-height: 1.8;
+}
+
+.docs-page .doc-steps {
+  gap: 12px;
+}
+
+.docs-page .doc-steps > div {
+  padding: 14px 16px 14px 46px;
+}
+
+.docs-page .doc-steps > div::before {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  top: 14px;
+  left: 14px;
+}
+
+.docs-page .doc-steps strong {
+  font-size: 15px;
+  margin-bottom: 5px;
+}
+
+.docs-page .doc-steps span {
+  font-size: 13.5px;
+  line-height: 1.9;
+}
+
+.docs-page .quiz-item {
+  padding: 14px 16px;
+  margin-bottom: 11px;
+}
+
+.docs-page .quiz-item > strong {
+  font-size: 15px;
+  line-height: 1.8;
+  margin-bottom: 8px;
+}
+
+.docs-page .quiz-item details summary {
+  font-size: 13.5px;
+}
+
+.docs-page .quiz-item details p {
+  font-size: 13.5px;
+  line-height: 1.9;
+}
+
+.docs-page .glossary-list {
+  gap: 12px;
+}
+
+.docs-page .glossary-list strong {
+  font-size: 15px;
+}
+
+.docs-page .glossary-list span {
+  font-size: 13.5px;
+  line-height: 1.85;
+}
+
+/* ---------- สื่อการสอนเดิม (sim-*) ---------- */
+
+.docs-page .sim-lead {
+  font-size: 16px;
+  line-height: 1.85;
+}
+
+.docs-page .sim-subtitle {
+  font-size: 18px;
+}
+
+.docs-page .sim-note {
+  font-size: 13px;
+  line-height: 1.85;
+}
+
+.docs-page .sim-status {
+  padding: 13px 14px;
+  gap: 11px;
+}
+
+.docs-page .sim-status strong {
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.docs-page .sim-status span {
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.docs-page .sim-metric {
+  padding: 13px 14px;
+}
+
+.docs-page .sim-metric span {
+  font-size: 13px;
+}
+
+.docs-page .sim-metric strong {
+  font-size: 26px;
+}
+
+.docs-page .sim-metric strong em {
+  font-size: 13px;
+}
+
+.docs-page .sim-range-row {
+  font-size: 14px;
+}
+
+.docs-page .sim-range-row > strong {
+  font-size: 15px;
+}
+
+.docs-page .sim-stage strong {
+  font-size: 13px;
+}
+
+.docs-page .sim-stage > span {
+  font-size: 11.5px;
+}
+
+.docs-page .sim-drop-none {
+  font-size: 11.5px;
+}
+
+.docs-page .sim-tank-marker em {
+  font-size: 12px;
+}
+
+/* ---------- สื่อการสอนชุดใหม่ (tch-*) ---------- */
+
+.docs-page .tch-tab {
+  padding: 11px 13px;
+  gap: 4px;
+}
+
+.docs-page .tch-tab strong {
+  font-size: 14px;
+}
+
+.docs-page .tch-tab small {
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+
+.docs-page .tch-btn {
+  font-size: 13px;
+  padding: 9px 13px;
+}
+
+.docs-page .tch-chip,
+.docs-page .tch-chip-label {
+  font-size: 13px;
+}
+
+.docs-page .tch-chip {
+  padding: 6px 12px;
+}
+
+.docs-page .tch-caption strong {
+  font-size: 15px;
+}
+
+.docs-page .tch-caption p {
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.docs-page .tch-caption span {
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.docs-page .tch-hint {
+  font-size: 12px;
+}
+
+.docs-page .tch-valve {
+  padding: 10px 13px;
+}
+
+.docs-page .tch-valve-text strong {
+  font-size: 14px;
+}
+
+.docs-page .tch-valve-text small {
+  font-size: 12px;
+}
+
+.docs-page .tch-hint-row {
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.docs-page .tch-node-label {
+  font-size: 13px;
+}
+
+.docs-page .tch-node-num {
+  font-size: 14px;
+}
+
+.docs-page .tch-node-title {
+  font-size: 15px;
+}
+
+.docs-page .tch-plot-title {
+  font-size: 14px;
+}
+
+.docs-page .tch-plot-sub,
+.docs-page .tch-plot-q {
+  font-size: 12px;
+}
+
+/* ---------- จอเล็ก ---------- */
+
+@media (max-width: 980px) {
+  .docs-page .docs-layout {
+    grid-template-columns: 230px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 650px) {
+  .docs-page .docs-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .docs-page h1 {
+    font-size: 30px;
+  }
+
+  .docs-page .article-title-row h2 {
+    font-size: 25px;
+  }
+
+  .docs-page .article-body {
+    font-size: 15.5px;
+  }
+
+  .docs-page .article-lead {
+    font-size: 17px;
+  }
+
+  .docs-page .article-body h3 {
+    font-size: 18px;
+  }
+
+  .docs-page .doc-table {
+    font-size: 14px;
+  }
+
+  .docs-page .doc-table td {
+    font-size: 14px;
+    min-width: 130px;
+  }
+
+  .docs-page .formula code {
+    font-size: 16px;
+  }
+}
+
+/* ===== เพิ่มความเข้มของตัวหนังสือ (ไม่แตะหัวข้อ) ===== */
+
+.docs-page .article-body {
+  color: #3c5147;
+}
+
+.docs-page .article-lead {
+  color: #3f554a;
+}
+
+.docs-page .article-body strong {
+  color: #2b4036;
+}
+
+.docs-page .intro-highlight strong {
+  color: #2b4036;
+}
+
+.docs-page .intro-highlight p {
+  color: #4b5f54;
+}
+
+.docs-page .article-title-row p {
+  color: #5f7266;
+}
+
+.docs-page .article-topline,
+.docs-page .article-bottom {
+  color: #74857a;
+}
+
+.docs-page .doc-callout span {
+  color: #4e6357;
+}
+
+.docs-page .doc-callout.warning span {
+  color: #7d6a4c;
+}
+
+.docs-page .doc-table td {
+  color: #3f5449;
+}
+
+.docs-page .topic-table span {
+  color: #5a6e62;
+}
+
+.docs-page .formula span {
+  color: #54685c;
+}
+
+.docs-page .doc-steps span {
+  color: #4a5f53;
+}
+
+.docs-page .quiz-item details p {
+  color: #455a4e;
+}
+
+.docs-page .glossary-list span {
+  color: #495e52;
+}
+
+.docs-page .hardware-list span {
+  color: #55695d;
+}
+
+.docs-page .mode-doc-grid p {
+  color: #4c6155;
+}
+
+.docs-page .architecture-step span {
+  color: #5a6e62;
+}
+
+.docs-page .checklist-doc > div {
+  color: #4a5f53;
+}
+
+/* ---------- เมนูด้านซ้าย ---------- */
+
+.docs-page .docs-nav-item {
+  color: #55685c;
+}
+
+.docs-page .docs-nav-label {
+  color: #6b7d72;
+}
+
+.docs-page .docs-search input {
+  color: #3f5449;
+}
+
+.docs-page .docs-search input::placeholder {
+  color: #8a978e;
+}
+
+.docs-page .docs-progress .progress-title {
+  color: #6f8075;
+}
+
+.docs-page .docs-progress small {
+  color: #7b8b81;
+}
+
+.docs-page .empty-search {
+  color: #6f8075;
+}
+
+/* ---------- สื่อการสอน ---------- */
+
+.docs-page .sim-lead {
+  color: #43584c;
+}
+
+.docs-page .sim-note {
+  color: #5f7266;
+}
+
+.docs-page .sim-status span {
+  color: #4d6156;
+}
+
+.docs-page .sim-stage > span,
+.docs-page .sim-subtitle + p {
+  color: #566a5e;
+}
+
+.docs-page .sim-range-row {
+  color: #465b4f;
+}
+
+.docs-page .tch-tab small {
+  color: #5b6e62;
+}
+
+.docs-page .tch-caption p {
+  color: #465b4f;
+}
+
+.docs-page .tch-caption span {
+  color: #566a5e;
+}
+
+.docs-page .tch-hint,
+.docs-page .tch-valve-text small,
+.docs-page .tch-hint-row {
+  color: #576b5f;
+}
+
+.docs-page .tch-node-label {
+  fill: #5e7266;
+}
+
+.docs-page .tch-plot-sub {
+  fill: #5a6d61;
+}
+
+.docs-page .tch-plot-q {
+  fill: #45594d;
+}
+
