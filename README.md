@@ -123,6 +123,8 @@ curl -X POST http://localhost:3000/api/sensors/telemetry \
 - `humidity` ต้องอยู่ระหว่าง `0–100` ไม่งั้นได้ `400`
 - `tankWaterLevel` (ระดับน้ำในถัง `%`) ต้องอยู่ระหว่าง `0–100` ไม่งั้นได้ `400`
   — รับชื่ออื่นได้ด้วย: `waterTankPercent` หรือ `waterTank: { levelPercent }`
+- `POST` รับ payload รูปแบบเดียวกับ response ของ `GET /api/sensors/latest` ได้เลย
+  คือ `{ weather: { temperatureC, humidity, etoMmPerDay }, waterTank: { levelPercent }, zones: [{ id, values }] }`
 - `zones` ที่ไม่รู้จัก (เช่น `corn`) จะถูกข้าม
 - `soilMoisturePercent` ควรอยู่ `1–100`
 
