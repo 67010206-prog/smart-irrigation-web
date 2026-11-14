@@ -19,6 +19,42 @@ const ZONE_IDS: ZoneId[] = [
   'potted',
 ];
 
+/**
+ * รวม zones ที่ส่งมาเป็น map { zoneId: values }
+ * รองรับ 2 รูปแบบ:
+ *  1) object: { "herb": { "soilWaterKpa": 30 } }
+ *  2) array : [{ "id": "herb", "values": { "soilWaterKpa": 30 } }]  (แบบ snapshot)
+ */
+function normalizeZones(
+  raw: unknown
+): Partial<Record<ZoneId, Record<string, unknown>>> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+
+  if (Array.isArray(raw)) {
+    const map: Partial<Record<ZoneId, Record<string, unknown>>> = {};
+
+    for (const item of raw) {
+      if (!item || typeof item !== 'object') continue;
+
+      const record = item as Record<string, unknown>;
+      const id = record.id ?? record.zone ?? record.zoneId;
+
+      if (typeof id !== 'string') continue;
+
+      const values =
+        record.values && typeof record.values === 'object'
+          ? (record.values as Record<string, unknown>)
+          : record;
+
+      map[id as ZoneId] = values;
+    }
+
+    return map;
+  }
+
+  return raw as Partial<Record<ZoneId, Record<string, unknown>>>;
+}
+
 /** แปลงค่าเป็น number (คืน null ถ้าไม่ใช่ตัวเลข) */
 function toNumber(value: unknown): number | null {
   if (value === undefined || value === null || value === '') return null;
@@ -53,10 +89,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  // 1) ค่าอากาศ
-  const temperature = toNumber(body.temperature);
-  const humidity = toNumber(body.humidity);
-  const etoMmPerDay = toNumber(body.etoMmPerDay);
+  // 1) ค่าอากาศ — รับได้ทั้งแบบแบน และแบบก้อน weather (ตาม response ของ /api/sensors/latest)
+  const weatherRecord =
+    body.weather && typeof body.weather === 'object'
+      ? (body.weather as Record<string, unknown>)
+      : null;
+
+  const temperature = toNumber(
+    body.temperature ?? weatherRecord?.temperatureC
+  );
+  const humidity = toNumber(body.humidity ?? weatherRecord?.humidity);
+  const etoMmPerDay = toNumber(
+    body.etoMmPerDay ?? weatherRecord?.etoMmPerDay
+  );
 
   if (humidity !== null && (humidity < 0 || humidity > 100)) {
     return NextResponse.json(
@@ -71,14 +116,19 @@ export async function POST(request: Request) {
     ...(etoMmPerDay !== null ? { etoMmPerDay } : {}),
   });
 
-  // 2) ระดับน้ำในถังหลัก (ส่งได้ทั้ง waterTankPercent และ waterTank.levelPercent)
+  // 2) ระดับน้ำในถังหลัก
+  // รับได้หลายชื่อ: tankWaterLevelPercent (สเปก Node-RED ล่าสุด), tankWaterLevel,
+  // waterTankPercent และ waterTank.levelPercent
   const waterTankRecord =
     body.waterTank && typeof body.waterTank === 'object'
       ? (body.waterTank as Record<string, unknown>)
       : null;
 
   const waterTankPercent = toNumber(
-    body.waterTankPercent ?? waterTankRecord?.levelPercent
+    body.tankWaterLevelPercent ??
+      body.tankWaterLevel ??
+      body.waterTankPercent ??
+      waterTankRecord?.levelPercent
   );
 
   if (
@@ -86,7 +136,10 @@ export async function POST(request: Request) {
     (waterTankPercent < 0 || waterTankPercent > 100)
   ) {
     return NextResponse.json(
-      { error: 'waterTankPercent ต้องอยู่ระหว่าง 0-100' },
+      {
+        error:
+          'tankWaterLevelPercent ต้องอยู่ระหว่าง 0-100 (รับ tankWaterLevel / waterTankPercent ได้ด้วย)',
+      },
       { status: 400 }
     );
   }
@@ -95,10 +148,8 @@ export async function POST(request: Request) {
     updateWaterTank({ levelPercent: waterTankPercent });
   }
 
-  // 3) ค่าของแต่ละแปลง (ไม่ส่งมาก็ได้)
-  const zones = body.zones as
-    | Partial<Record<ZoneId, Record<string, unknown>>>
-    | undefined;
+  // 3) ค่าของแต่ละแปลง (ไม่ส่งมาก็ได้ — รับได้ทั้ง object และ array)
+  const zones = normalizeZones(body.zones);
 
   for (const id of ZONE_IDS) {
     const received = zones?.[id];
@@ -137,6 +188,8 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     weather,
+    tankWaterLevelPercent: waterTank.levelPercent,
+    tankWaterLevel: waterTank.levelPercent,
     waterTank,
     zones: updatedZones,
     updatedAt,
