@@ -476,3 +476,40 @@
     padding: 9px 10px;
   }
 }
+
+/* แถบสรุป ETo / น้ำฝน ของงบน้ำ */
+.wb-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.wb-stat {
+  border: 1px solid #e9eeea;
+  background: #fbfcfb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wb-stat span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #8b9a90;
+}
+
+.wb-stat strong {
+  font-size: 15px;
+  color: #2b433a;
+}
+
+@media (max-width: 650px) {
+  .wb-stats {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,37 +1,36 @@
-import { Droplets, Waves } from 'lucide-react';
+import { CloudRain, Droplets, Waves } from 'lucide-react';
 
-import {
-  KP,
-  MONTH_NAMES_TH,
-  computeWaterBalance,
-} from '../lib/irrigationPlan';
+import { EFFECTIVE_RAIN_FACTOR, computeWaterBalance } from '../lib/irrigationPlan';
 
-function fmt(value: number, digits = 1): string {
-  return Number.isFinite(value) ? value.toFixed(digits) : '--';
+function fmt(value: number | null, digits = 2): string {
+  return value === null || !Number.isFinite(value) ? '--' : value.toFixed(digits);
 }
 
-function fmtInt(value: number): string {
-  return Number.isFinite(value)
-    ? Math.round(value).toLocaleString('th-TH')
-    : '--';
+function fmtInt(value: number | null): string {
+  return value === null || !Number.isFinite(value)
+    ? '--'
+    : Math.round(value).toLocaleString('th-TH');
+}
+
+interface WaterBalanceProps {
+  /** ETo จากสถานีอากาศ (mm/วัน) */
+  etoMmPerDay: number | null;
+  /** น้ำฝนของวัน (mm) */
+  rainfallMm: number | null;
 }
 
 /**
- * งบน้ำรายแปลง — ETo = Kp × Ep, ETc = Kc × ETo, ปริมาณน้ำ = mm × พื้นที่
+ * งบน้ำรายแปลง — น้ำที่ต้องจ่าย = ((ETo × Kc) − (น้ำฝน × 0.70)) × Area
  * แสดงต่อท้ายหน้า Control (Dashboard)
  */
-export default function WaterBalance() {
-  const monthIndex = new Date().getMonth();
-  const rows = computeWaterBalance(monthIndex);
+export default function WaterBalance({ etoMmPerDay, rainfallMm }: WaterBalanceProps) {
+  const rows = computeWaterBalance(etoMmPerDay, rainfallMm);
 
-  const totals = rows.reduce(
-    (acc, row) => ({
-      area: acc.area + row.plot.areaM2,
-      water: acc.water + row.waterLitersPerDay,
-      capacity: acc.capacity + row.capacityLiters,
-    }),
-    { area: 0, water: 0, capacity: 0 }
-  );
+  const totalLiters = rows.every((row) => row.waterLitersPerDay === null)
+    ? null
+    : rows.reduce((sum, row) => sum + (row.waterLitersPerDay ?? 0), 0);
+
+  const effectiveRain = rows[0]?.effectiveRainMm ?? 0;
 
   return (
     <section className="water-balance">
@@ -39,16 +38,31 @@ export default function WaterBalance() {
         <div>
           <h2>งบน้ำรายแปลง (Water Balance)</h2>
           <p>
-            ความต้องการน้ำของพืชแต่ละแปลง เทียบกับความจุน้ำที่ดินอุ้มไว้ได้ ·
-            เดือน{MONTH_NAMES_TH[monthIndex]}
+            น้ำที่ต้องจ่าย = ((ETo × Kc) − (น้ำฝน × {EFFECTIVE_RAIN_FACTOR.toFixed(2)})) ×
+            พื้นที่ · ETo จากสถานีอากาศ (FAO-56 Penman–Monteith)
           </p>
         </div>
 
         <div className="wb-badge">
           <Droplets size={14} />
+          <span>รวม {fmtInt(totalLiters)} ลิตร/วัน</span>
+        </div>
+      </div>
+
+      <div className="wb-stats">
+        <div className="wb-stat">
+          <span>ETo วันนี้ (สถานีอากาศ)</span>
+          <strong>{fmt(etoMmPerDay)} mm/วัน</strong>
+        </div>
+        <div className="wb-stat">
           <span>
-            รวม {fmtInt(totals.water)} ลิตร/วัน
+            <CloudRain size={13} /> น้ำฝนวันนี้
           </span>
+          <strong>{fmt(rainfallMm, 1)} mm</strong>
+        </div>
+        <div className="wb-stat">
+          <span>น้ำฝนใช้การได้ (×{EFFECTIVE_RAIN_FACTOR.toFixed(2)})</span>
+          <strong>{fmt(effectiveRain, 2)} mm</strong>
         </div>
       </div>
 
@@ -57,14 +71,11 @@ export default function WaterBalance() {
           <thead>
             <tr>
               <th>แปลง</th>
-              <th>พื้นที่ (ตร.ม.)</th>
-              <th>พืชที่ปลูก (Kc ระยะ mid)</th>
-              <th>ETo (mm/วัน)</th>
-              <th>ETc (mm/วัน)</th>
-              <th>ความจุน้ำในดิน (mm)</th>
+              <th>Area (ตร.ม.)</th>
+              <th>Kc</th>
+              <th>พืชใช้น้ำได้ (mm)</th>
+              <th>ETc = Kc × ETo (mm/วัน)</th>
               <th>น้ำที่ต้องจ่าย (ลิตร/วัน)</th>
-              <th>ความจุทั้งแปลง (ลิตร)</th>
-              <th>น้ำพอใช้ (วัน)</th>
             </tr>
           </thead>
 
@@ -74,25 +85,21 @@ export default function WaterBalance() {
                 <td>
                   <strong>{row.plot.name}</strong>
                   <span className="wb-sub">
-                    {row.plot.soil} · อุ้มน้ำ {fmt(row.plot.waterHoldingMmPerCm, 2)}{' '}
-                    มม./ซม. · รากเฉลี่ย {fmt(row.rootDepthCm, 0)} ซม.
+                    {row.plot.soil} · อุ้มน้ำ {row.plot.waterHoldingMmPerCm.toFixed(2)}{' '}
+                    มม./ซม. × ราก {row.plot.rootDepthCm.toFixed(0)} ซม.
                   </span>
+                  <span className="wb-sub">{row.plot.plants}</span>
                 </td>
-                <td>{fmt(row.plot.areaM2, 2)}</td>
-                <td>
-                  <span className="wb-plants">{row.plantNames}</span>
-                  <span className="wb-sub">Kc เฉลี่ย {fmt(row.kcMid, 2)}</span>
-                </td>
-                <td>{fmt(row.etoMmPerDay, 2)}</td>
-                <td>{fmt(row.etcMmPerDay, 2)}</td>
+                <td>{row.plot.areaM2.toFixed(3)}</td>
+                <td>{row.plot.kc.toFixed(2)}</td>
                 <td>{fmt(row.capacityMm, 1)}</td>
+                <td>{fmt(row.etcMmPerDay)}</td>
                 <td>
                   <strong>{fmtInt(row.waterLitersPerDay)}</strong>
+                  <span className="wb-sub">
+                    {fmt(row.waterMmPerDay)} mm/วัน
+                  </span>
                 </td>
-                <td>
-                  <strong>{fmtInt(row.capacityLiters)}</strong>
-                </td>
-                <td>{fmt(row.daysOfWater, 1)}</td>
               </tr>
             ))}
           </tbody>
@@ -100,18 +107,13 @@ export default function WaterBalance() {
           <tfoot>
             <tr>
               <td>รวมทั้งระบบ</td>
-              <td>{fmt(totals.area, 2)}</td>
-              <td>—</td>
+              <td>{rows.reduce((sum, row) => sum + row.plot.areaM2, 0).toFixed(3)}</td>
               <td>—</td>
               <td>—</td>
               <td>—</td>
               <td>
-                <strong>{fmtInt(totals.water)}</strong>
+                <strong>{fmtInt(totalLiters)}</strong>
               </td>
-              <td>
-                <strong>{fmtInt(totals.capacity)}</strong>
-              </td>
-              <td>—</td>
             </tr>
           </tfoot>
         </table>
@@ -120,9 +122,10 @@ export default function WaterBalance() {
       <div className="wb-note">
         <Waves size={14} />
         <span>
-          ETo = Kp × Ep (Kp = {KP.toFixed(2)}, Ep กรุงเทพฯ รายเดือน) · ETc = Kc ×
-          ETo · ความจุน้ำในดิน = ค่าอุ้มน้ำ × ความลึกราก · 1 มม. บนพื้นที่ 1 ตร.ม. = 1
-          ลิตร · Kc ที่ใช้เป็นค่าเฉลี่ยระยะ mid ของพืชในแปลง
+          ETo รับจาก <code>/api/sensors/telemetry</code> (ฟิลด์ <code>etoMmPerDay</code>) ·
+          น้ำฝนรับจากฟิลด์ <code>rainfallMm</code> · พืชใช้น้ำได้ = ค่าอุ้มน้ำของดิน ×
+          ความลึกราก · 1 มม. บนพื้นที่ 1 ตร.ม. = 1 ลิตร · ถ้า ETc น้อยกว่าน้ำฝนใช้การได้
+          จะแสดง 0 ลิตร
         </span>
       </div>
     </section>

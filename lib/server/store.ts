@@ -38,6 +38,7 @@ const initialWeather: Weather = {
   lightLux: null,
   windMs: null,
   solarRadiationWm2: null,
+  rainfallMm: null,
 };
 
 const initialWaterTank: WaterTank = {
