@@ -6,6 +6,8 @@ import type {
   ZoneValues,
 } from '../types/iot';
 
+import { ZONE_VALVE_IDS } from '../zoneConfig';
+
 /**
  * ที่เก็บข้อมูลฝั่ง server (in-memory)
  * มีของแค่ 2 อย่าง: ค่าอากาศ + 5 แปลง
@@ -35,16 +37,41 @@ const initialWaterTank: WaterTank = {
 
 // ค่าเริ่มต้นของ 5 แปลง (แก้ตัวเลขที่แสดงบนหน้าเว็บได้ที่นี่)
 const initialZones: Zone[] = [
-  { id: 'herb', name: 'ไม้ล้มลุก', pumpOn: false, values: { soilWaterKpa: 32.5 } },
-  { id: 'rice', name: 'นาข้าว', pumpOn: false, values: { etoMmPerHour: 0.42 } },
+  {
+    id: 'herb',
+    name: 'ไม้ล้มลุก',
+    pumpOn: false,
+    values: { soilWaterKpa: 32.5 },
+    valveId: ZONE_VALVE_IDS.herb,
+  },
+  {
+    id: 'rice',
+    name: 'นาข้าว',
+    pumpOn: false,
+    values: { etoMmPerHour: 0.42 },
+    valveId: ZONE_VALVE_IDS.rice,
+  },
   {
     id: 'sunnhemp',
     name: 'ปอเทือง',
     pumpOn: false,
     values: { soilTempC: 26.8, soilHumidity: 58.5 },
+    valveId: ZONE_VALVE_IDS.sunnhemp,
   },
-  { id: 'sunflower', name: 'ทานตะวัน', pumpOn: false, values: { soilMoisturePercent: 41 } },
-  { id: 'potted', name: 'ไม้กระถาง', pumpOn: false, values: { soilWaterKpa: 18.4 } },
+  {
+    id: 'sunflower',
+    name: 'ทานตะวัน',
+    pumpOn: false,
+    values: { soilMoisturePercent: 41 },
+    valveId: ZONE_VALVE_IDS.sunflower,
+  },
+  {
+    id: 'potted',
+    name: 'ไม้กระถาง',
+    pumpOn: false,
+    values: { soilWaterKpa: 18.4 },
+    valveId: ZONE_VALVE_IDS.potted,
+  },
 ];
 
 // เก็บไว้ที่ globalThis เพื่อไม่ให้ค่าหายตอน Next.js โหลดโมดูลใหม่ (dev)
@@ -71,6 +98,10 @@ export function getStore(): FarmStore {
   // กันกรณี store ถูกสร้างจากโค้ดเวอร์ชันก่อนหน้า (dev hot reload) แล้วยังไม่มีฟิลด์ใหม่
   if (!store.waterTank) store.waterTank = { ...initialWaterTank };
   if (!store.pumpCommandAt) store.pumpCommandAt = {};
+
+  for (const zone of store.zones) {
+    if (typeof zone.valveId !== 'number') zone.valveId = ZONE_VALVE_IDS[zone.id];
+  }
 
   return store;
 }
@@ -134,6 +165,33 @@ export function setZonePump(
   if (zone.pumpOn === on) return zone;
 
   zone.pumpOn = on;
+  store.updatedAt = new Date().toISOString();
+
+  return zone;
+}
+
+/**
+ * อัปเดตสถานะวาล์วของแปลง (จาก valveStatus ที่ Node-RED ส่งมา)
+ * pumpOn ของแปลงจะอิงวาล์วตัวหลักของแปลงนั้น (zone.valveId)
+ */
+export function updateZoneValves(
+  id: ZoneId,
+  valves: Record<string, boolean>
+): Zone | undefined {
+  const store = getStore();
+  const zone = store.zones.find((item) => item.id === id);
+
+  if (!zone) return undefined;
+
+  zone.valves = { ...zone.valves, ...valves };
+
+  const mainValve = String(zone.valveId ?? ZONE_VALVE_IDS[id]);
+  const mainState = zone.valves[mainValve];
+
+  if (typeof mainState === 'boolean') {
+    zone.pumpOn = mainState;
+  }
+
   store.updatedAt = new Date().toISOString();
 
   return zone;

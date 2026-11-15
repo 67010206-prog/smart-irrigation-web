@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 
 import { getPumpCommandAt, getStore, setZonePump } from '@/lib/server/store';
-import { ZONE_GROUP_IDS, fetchPumpStatus } from '@/lib/server/nodered';
+import {
+  ZONE_GROUP_IDS,
+  ZONE_VALVE_IDS,
+  fetchPumpStatus,
+} from '@/lib/server/nodered';
 import { ensureMqttBridge } from '@/lib/server/mqttBridge';
 import { logEvent } from '@/lib/server/debugLog';
 
@@ -89,8 +93,21 @@ export async function GET() {
   // สถานะปั๊มแบบ group_id (ตรงกับที่ Node-RED ใช้) สำหรับฝั่งที่อ้าง group เป็นหลัก
   const pumpStatus: Record<string, boolean> = {};
 
+  // สถานะวาล์วรายตัว: { zone: { groupId, valves: { "2": true } } }
+  const valveStatus: Record<
+    string,
+    { groupId: string; valves: Record<string, boolean> }
+  > = {};
+
   for (const zone of zones) {
     pumpStatus[ZONE_GROUP_IDS[zone.id]] = zone.pumpOn;
+
+    const valveId = String(zone.valveId ?? ZONE_VALVE_IDS[zone.id]);
+
+    valveStatus[zone.id] = {
+      groupId: ZONE_GROUP_IDS[zone.id],
+      valves: zone.valves ?? { [valveId]: zone.pumpOn },
+    };
   }
 
   return NextResponse.json(
@@ -101,6 +118,7 @@ export async function GET() {
       tankWaterLevel: waterTank.levelPercent,
       waterTank,
       pumpStatus,
+      valveStatus,
       zones,
       updatedAt,
     },

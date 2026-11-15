@@ -155,7 +155,47 @@ GET /api/sensors/latest
 }
 ```
 
-## 6. ข้อควรรู้
+## 6. Valve (วาล์วรายตัว)
+
+Mapping อยู่ที่ `lib/zoneConfig.ts` (ใช้ร่วม client/server):
+
+| Zone | group_id | valveId |
+|---|---|---|
+| herb | group2 | 2 |
+| rice | group5 | 3 |
+| sunnhemp | group3 | 4 |
+| sunflower | group1 | 4 |
+| potted | group4 | 4 |
+
+สั่งงาน (ส่งได้ทั้ง `state` และ `command`):
+
+```http
+POST /api/control/pump
+{ "zone": "rice", "command": "ON", "valveId": 3 }
+```
+
+ถ้า `valveId` ไม่ตรงกับ mapping → `400` และไม่ส่งคำสั่งต่อ
+เวลา forward ไป Node-RED จะได้ payload:
+
+```json
+{ "group_id": "group5", "request": true, "valve_id": 3, "zone": "rice", "command": "ON" }
+```
+
+รายงานสถานะวาล์ว (Node-RED → API):
+
+```json
+{
+  "valveStatus": {
+    "herb": { "groupId": "group2", "valves": { "2": true } },
+    "rice": { "groupId": "group5", "valves": { "3": false } }
+  }
+}
+```
+
+`pumpOn` ของแปลงจะอิงวาล์วตัวหลัก (`zone.valveId`) และ `GET /api/sensors/latest`
+ตอบ `valveStatus` กลับในรูปแบบเดียวกัน
+
+## 7. ข้อควรรู้
 
 - คิวคำสั่งอยู่ในหน่วยความจำ (สูงสุด 100 คำสั่ง) — serverless หลาย instance อาจมองไม่เห็นคิวเดียวกัน
 - ถ้า Node-RED ยังใช้ HTTP Request ยิง `POST /api/irrigation/pump` ตรงอยู่แล้ว ไม่ต้องทำ polling ก็ได้

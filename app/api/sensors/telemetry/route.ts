@@ -8,6 +8,7 @@ import {
   updateWaterTank,
   updateWeather,
   updateZoneValues,
+  updateZoneValves,
 } from '@/lib/server/store';
 
 import { parsePumpStatus } from '@/lib/server/nodered';
@@ -67,6 +68,21 @@ function toNumber(value: unknown): number | null {
   const number = Number(value);
 
   return Number.isFinite(number) ? number : null;
+}
+
+/** แปลงค่าเป็น boolean (คืน null ถ้าไม่รู้จัก) */
+function toBoolean(value: unknown): boolean | null {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+
+  if (typeof value === 'string') {
+    const text = value.trim().toLowerCase();
+
+    if (['on', 'true', '1', 'open', 'opened'].includes(text)) return true;
+    if (['off', 'false', '0', 'close', 'closed'].includes(text)) return false;
+  }
+
+  return null;
 }
 
 /**
@@ -197,7 +213,47 @@ export async function POST(request: Request) {
     updateZoneValues(id, values);
   }
 
-  // 4) สถานะปั๊มจริงจาก Node-RED (pumpStates / requests / runningGroups)
+  // 4) สถานะวาล์วรายตัว (valveStatus) — { zone: { groupId, valves: { "2": true } } }
+  const valveStatusRaw =
+    body.valveStatus && typeof body.valveStatus === 'object'
+      ? (body.valveStatus as Record<string, unknown>)
+      : null;
+
+  const valveChanges: Array<{ zone: ZoneId; valves: Record<string, boolean> }> =
+    [];
+
+  for (const id of ZONE_IDS) {
+    const entry = valveStatusRaw?.[id];
+
+    if (!entry || typeof entry !== 'object') continue;
+
+    const valvesRaw = (entry as Record<string, unknown>).valves;
+
+    if (!valvesRaw || typeof valvesRaw !== 'object') continue;
+
+    const valves: Record<string, boolean> = {};
+
+    for (const [valveKey, rawValue] of Object.entries(
+      valvesRaw as Record<string, unknown>
+    )) {
+      const parsed = toBoolean(rawValue);
+
+      if (parsed !== null) valves[valveKey] = parsed;
+    }
+
+    if (Object.keys(valves).length === 0) continue;
+
+    updateZoneValves(id, valves);
+    valveChanges.push({ zone: id, valves });
+  }
+
+  if (valveChanges.length > 0) {
+    logEvent('pump.valve', 'อัปเดตสถานะวาล์วจาก Node-RED', {
+      valveChanges,
+    });
+  }
+
+  // 5) สถานะปั๊มจริงจาก Node-RED (pumpStates / pumpStatus / requests / runningGroups)
   //    Node-RED เป็นฝ่ายถูก: ถ้าส่ง false มา = ยกเลิกสถานะที่กดไว้บนเว็บทันที
   const pumpStates = parsePumpStatus(body);
   const switched: Array<{ zone: ZoneId; on: boolean }> = [];
@@ -228,6 +284,7 @@ export async function POST(request: Request) {
     etoMmPerDay: weather.etoMmPerDay,
     tankWaterLevel: waterTank.levelPercent,
     zones: zones ? Object.keys(zones) : [],
+    valves: valveChanges.length > 0 ? valveChanges : undefined,
   });
 
   return NextResponse.json({

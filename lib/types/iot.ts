@@ -18,6 +18,16 @@ export interface Zone {
   name: string;
   pumpOn: boolean;
   values: ZoneValues;
+  /** หมายเลขวาล์วของแปลง (ตาม ZONE_VALVE_IDS) */
+  valveId?: number;
+  /** สถานะวาล์วแต่ละตัวจาก Node-RED เช่น { "2": true } */
+  valves?: Record<string, boolean>;
+}
+
+/** สถานะวาล์วของแปลง ตามรูปแบบที่ Node-RED ส่งมา */
+export interface ValveStatusEntry {
+  groupId: string;
+  valves: Record<string, boolean>;
 }
 
 /** ค่าอากาศ + ETo (การ์ดแถวบน) */
@@ -37,6 +47,10 @@ export interface FarmSnapshot {
   weather: Weather;
   zones: Zone[];
   waterTank: WaterTank;
+  /** สถานะวาล์วแยกตามแปลง */
+  valveStatus?: Partial<Record<ZoneId, ValveStatusEntry>>;
+  /** สถานะปั๊มตาม group_id */
+  pumpStatus?: Record<string, boolean>;
   updatedAt: string;
 }
 

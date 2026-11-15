@@ -4,6 +4,8 @@ import type {
   ZoneId,
 } from '../types/iot';
 
+import { ZONE_VALVE_IDS } from '../zoneConfig';
+
 /**
  * API Client ของหน้าเว็บ
  * ค่าเริ่มต้น = same-origin (/api/...) แต่เปลี่ยนได้ด้วย NEXT_PUBLIC_API_BASE_URL
@@ -69,7 +71,14 @@ export async function setZonePumpState(
     const res = await fetch(`${getApiBaseUrl()}/api/control/pump`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ zone, state, source: 'web' }),
+      // ส่ง group/valve ตาม mapping ให้ API ตรวจก่อน forward ไป Node-RED
+      body: JSON.stringify({
+        zone,
+        state,
+        command: state ? 'ON' : 'OFF',
+        valveId: ZONE_VALVE_IDS[zone],
+        source: 'web',
+      }),
     });
 
     return res.ok;

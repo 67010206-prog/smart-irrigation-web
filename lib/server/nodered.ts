@@ -1,19 +1,14 @@
 import type { ZoneId } from '../types/iot';
+import { ZONE_GROUP_IDS, ZONE_VALVE_IDS, getZoneConfig } from '../zoneConfig';
 
 /**
  * ตัวเชื่อมกับ Node-RED
- * - คำสั่ง: POST { group_id, request }
+ * - คำสั่ง: POST { group_id, request, valve_id }
  * - สถานะ: GET { "group1": "ON", "group2": "OFF", ... }
  */
 
-/** แปลง (zone) → group_id ของ Node-RED */
-export const ZONE_GROUP_IDS: Record<ZoneId, string> = {
-  herb: 'group2',
-  rice: 'group5',
-  sunnhemp: 'group3',
-  sunflower: 'group1',
-  potted: 'group4',
-};
+// mapping อยู่ที่ lib/zoneConfig.ts (ใช้ร่วมกับฝั่ง client ได้)
+export { ZONE_GROUP_IDS, ZONE_VALVE_IDS, getZoneConfig };
 
 /** group_id → แปลง (zone) */
 const GROUP_ZONE_IDS: Record<string, ZoneId> = Object.fromEntries(
@@ -59,11 +54,20 @@ export async function forwardPumpCommand(
   const url = getNodeRedPumpUrl();
   const groupId = ZONE_GROUP_IDS[zone];
 
+  const { valveId } = getZoneConfig(zone);
+
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ group_id: groupId, request: state }),
+      // ส่งทั้งรูปแบบเดิม (group_id + request) และ valve_id สำหรับ flow ใหม่
+      body: JSON.stringify({
+        group_id: groupId,
+        request: state,
+        valve_id: valveId,
+        zone,
+        command: state ? 'ON' : 'OFF',
+      }),
       cache: 'no-store',
       signal: AbortSignal.timeout(timeoutMs),
     });
