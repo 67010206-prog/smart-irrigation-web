@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 
 import { getStore, setZonePump } from '@/lib/server/store';
-import { ZONE_GROUP_IDS, forwardPumpCommand } from '@/lib/server/nodered';
+import {
+  ZONE_GROUP_IDS,
+  ZONE_VALVE_IDS,
+  forwardPumpCommand,
+  getZoneConfig,
+} from '@/lib/server/nodered';
 import { ensureMqttBridge, getMqttStatus } from '@/lib/server/mqttBridge';
 import {
   enqueuePumpCommand,
@@ -78,10 +83,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   ensureMqttBridge();
 
-  let body: { zone?: unknown; state?: unknown };
+  let body: {
+    zone?: unknown;
+    state?: unknown;
+    command?: unknown;
+    valveId?: unknown;
+  };
 
   try {
-    body = (await request.json()) as { zone?: unknown; state?: unknown };
+    body = (await request.json()) as typeof body;
   } catch {
     logEvent('pump.reject', 'body ไม่ใช่ JSON ที่ถูกต้อง');
 
@@ -97,29 +107,65 @@ export async function POST(request: Request) {
     );
   }
 
-  if (typeof body.state !== 'boolean') {
-    logEvent('pump.reject', 'state ไม่ใช่ boolean', body);
+  // รับได้ทั้ง state: boolean และ command: "ON" | "OFF"
+  let state: boolean | null =
+    typeof body.state === 'boolean' ? body.state : null;
+
+  if (state === null && typeof body.command === 'string') {
+    const command = body.command.trim().toUpperCase();
+
+    if (command === 'ON') state = true;
+    if (command === 'OFF') state = false;
+  }
+
+  if (state === null) {
+    logEvent('pump.reject', 'state/command ไม่ถูกต้อง', body);
 
     return NextResponse.json(
-      { error: 'state ต้องเป็น true หรือ false' },
+      { error: 'ต้องส่ง state: true/false หรือ command: "ON"/"OFF"' },
       { status: 400 }
     );
   }
 
   const zoneId = body.zone as ZoneId;
+
+  // ถ้าส่ง valveId มาด้วย ต้องตรงกับ mapping ไม่งั้นไม่ส่งคำสั่งต่อ (กันสั่งผิดวาล์ว)
+  if (body.valveId !== undefined) {
+    const expected = ZONE_VALVE_IDS[zoneId];
+    const received = Number(body.valveId);
+
+    if (!Number.isFinite(received) || received !== expected) {
+      logEvent('pump.reject', 'valveId ไม่ตรงกับ mapping', {
+        zone: zoneId,
+        received: body.valveId,
+        expected,
+      });
+
+      return NextResponse.json(
+        {
+          error: `valveId ของ ${zoneId} ต้องเป็น ${expected}`,
+          zone: zoneId,
+          expectedValveId: expected,
+        },
+        { status: 400 }
+      );
+    }
+  }
   const groupId = ZONE_GROUP_IDS[zoneId];
 
   // ทุกคำสั่งถูกบันทึกในคิวก่อน → ถ้าส่งตรงไม่สำเร็จ Node-RED ยังมารับได้
-  const command = enqueuePumpCommand(zoneId, body.state);
+  const command = enqueuePumpCommand(zoneId, state);
+  const { valveId } = getZoneConfig(zoneId);
 
-  logEvent('pump.command', `สั่ง ${zoneId} = ${body.state ? 'ON' : 'OFF'}`, {
+  logEvent('pump.command', `สั่ง ${zoneId} = ${state ? 'ON' : 'OFF'}`, {
     zone: zoneId,
-    state: body.state,
+    state,
     group_id: groupId,
+    valve_id: valveId,
     commandId: command.commandId,
   });
 
-  const forwarded = await forwardPumpCommand(zoneId, body.state);
+  const forwarded = await forwardPumpCommand(zoneId, state);
 
   if (!forwarded.ok) {
     logEvent('pump.error', forwarded.error, { zone: zoneId, group_id: groupId });
@@ -138,7 +184,7 @@ export async function POST(request: Request) {
           state: command.state,
           status: command.status,
         },
-        forwarded: { group_id: groupId, request: body.state },
+        forwarded: { group_id: groupId, request: state, valve_id: valveId },
       },
       { status: 502 }
     );
@@ -149,7 +195,7 @@ export async function POST(request: Request) {
   // ส่งตรงสำเร็จ = ไม่ต้องให้ Node-RED ดึงซ้ำ
   finishCommand(command.commandId, 'done', 'ส่งตรงไป Node-RED สำเร็จ');
 
-  const zone = setZonePump(zoneId, body.state, 'local');
+  const zone = setZonePump(zoneId, state, 'local');
 
   return NextResponse.json({
     ok: true,
@@ -161,6 +207,6 @@ export async function POST(request: Request) {
       state: command.state,
       status: 'done' as const,
     },
-    forwarded: { group_id: groupId, request: body.state },
+    forwarded: { group_id: groupId, request: state, valve_id: valveId },
   });
 }

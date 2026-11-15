@@ -9,6 +9,7 @@ import {
 import WaterTankCard from './WaterTank';
 
 import type { WaterTank, Zone, ZoneId, ZoneValues } from '../lib/types/iot';
+import { getZoneConfig } from '../lib/zoneConfig';
 
 interface ControlProps {
   weather: {
@@ -114,6 +115,8 @@ function ZoneCard({
   wide?: boolean;
   children: ReactNode;
 }) {
+  const { groupId, valveId } = getZoneConfig(zoneId);
+
   return (
     <article className={`panel plant-card ${wide ? 'plant-wide' : ''}`}>
       <div className="plant-card-head">
@@ -121,6 +124,9 @@ function ZoneCard({
         <div>
           <h2>{title}</h2>
           <span>{subtitle}</span>
+          <span className="plant-valve">
+            Valve {valveId} · {groupId}
+          </span>
         </div>
       </div>
 

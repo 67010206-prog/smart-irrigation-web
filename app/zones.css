@@ -80,6 +80,20 @@
   line-height: 1.5;
 }
 
+/* ป้าย Valve ID + group ที่ API ใช้จริง */
+.plant-card-head .plant-valve {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f6f2;
+  border: 1px solid #e0ebe2;
+  color: #54705c;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
 .plant-values {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
