@@ -24,10 +24,11 @@ import type {
 // ดึงข้อมูลจาก backend เป็นรอบ (แก้ตัวเลขนี้ถ้าต้องการถี่ขึ้น/ห่างขึ้น)
 const POLL_INTERVAL_MS = 10000;
 
+// ยังไม่ได้รับค่า → null (แสดง "--" ไม่ใช่ 0)
 const EMPTY_WEATHER: Weather = {
-  temperatureC: 0,
-  humidity: 0,
-  etoMmPerDay: 0,
+  temperatureC: null,
+  humidity: null,
+  etoMmPerDay: null,
 };
 
 function readPumpLogs(): PumpLog[] {
@@ -135,34 +136,42 @@ export default function Dashboard() {
 
       setLastUpdated(now);
 
-      // บันทึกประวัติ (ข้ามรอบที่ค่าไม่เปลี่ยน)
-      setHistory((current) => {
-        const last = current[current.length - 1];
+      // บันทึกประวัติ (ข้ามรอบที่ค่าไม่เปลี่ยน / ข้ามถ้ายังไม่เคยได้รับค่าจริง)
+      const { temperatureC, humidity, etoMmPerDay } = snapshot.weather;
 
-        if (
-          last &&
-          last.temperature === snapshot.weather.temperatureC &&
-          last.humidity === snapshot.weather.humidity &&
-          last.etoMmPerDay === snapshot.weather.etoMmPerDay
-        ) {
-          return current;
-        }
+      if (
+        temperatureC !== null &&
+        humidity !== null &&
+        etoMmPerDay !== null
+      ) {
+        setHistory((current) => {
+          const last = current[current.length - 1];
 
-        return [
-          ...current.slice(-29),
-          {
-            timestamp: now,
-            time: now.toLocaleTimeString('th-TH', {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            }),
-            temperature: snapshot.weather.temperatureC,
-            humidity: snapshot.weather.humidity,
-            etoMmPerDay: snapshot.weather.etoMmPerDay,
-          },
-        ];
-      });
+          if (
+            last &&
+            last.temperature === temperatureC &&
+            last.humidity === humidity &&
+            last.etoMmPerDay === etoMmPerDay
+          ) {
+            return current;
+          }
+
+          return [
+            ...current.slice(-29),
+            {
+              timestamp: now,
+              time: now.toLocaleTimeString('th-TH', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              }),
+              temperature: temperatureC,
+              humidity,
+              etoMmPerDay,
+            },
+          ];
+        });
+      }
 
       timer = window.setTimeout(poll, POLL_INTERVAL_MS);
     };

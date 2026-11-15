@@ -13,9 +13,9 @@ import { getZoneConfig } from '../lib/zoneConfig';
 
 interface ControlProps {
   weather: {
-    temperatureC: number;
-    humidity: number;
-    etoMmPerDay: number;
+    temperatureC: number | null;
+    humidity: number | null;
+    etoMmPerDay: number | null;
   };
   waterTank: WaterTank | null;
   zones: Zone[];

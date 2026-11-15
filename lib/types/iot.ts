@@ -30,16 +30,19 @@ export interface ValveStatusEntry {
   valves: Record<string, boolean>;
 }
 
-/** ค่าอากาศ + ETo (การ์ดแถวบน) */
+/**
+ * ค่าอากาศ + ETo (การ์ดแถวบน)
+ * null = ยังไม่เคยได้รับค่านี้ — ไม่แต่งค่าขึ้นเอง แล้วค้างค่าล่าสุดไว้จนกว่าจะมีค่าใหม่มา
+ */
 export interface Weather {
-  temperatureC: number;
-  humidity: number;
-  etoMmPerDay: number;
+  temperatureC: number | null;
+  humidity: number | null;
+  etoMmPerDay: number | null;
 }
 
-/** ถังน้ำหลักของระบบ */
+/** ถังน้ำหลักของระบบ (null = ยังไม่เคยได้รับค่า) */
 export interface WaterTank {
-  levelPercent: number; // ระดับน้ำในถัง (%)
+  levelPercent: number | null; // ระดับน้ำในถัง (%)
 }
 
 /** ข้อมูลที่ GET /api/sensors/latest ตอบกลับ */

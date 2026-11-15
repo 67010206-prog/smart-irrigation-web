@@ -23,53 +23,54 @@ interface FarmStore {
   pumpCommandAt: Partial<Record<ZoneId, number>>;
 }
 
-// ค่าเริ่มต้นของการ์ดแถวบน
+// ยังไม่ได้รับค่าจากเซนเซอร์ → null (ไม่แต่งค่าเริ่มต้นขึ้นเอง)
+// ค่าที่รับมาจะค้างอยู่จนกว่าจะมีค่าใหม่มาแทน
 const initialWeather: Weather = {
-  temperatureC: 29.5,
-  humidity: 70,
-  etoMmPerDay: 4.2,
+  temperatureC: null,
+  humidity: null,
+  etoMmPerDay: null,
 };
 
-// ค่าเริ่มต้นของถังน้ำหลัก (แก้ตัวเลขที่แสดงบนหน้าเว็บได้ที่นี่)
 const initialWaterTank: WaterTank = {
-  levelPercent: 65,
+  levelPercent: null,
 };
 
 // ค่าเริ่มต้นของ 5 แปลง (แก้ตัวเลขที่แสดงบนหน้าเว็บได้ที่นี่)
+// ค่าในแปลงเว้นว่างไว้ก่อน — จะแสดง "--" จนกว่า Node-RED จะส่งค่าจริงมา
 const initialZones: Zone[] = [
   {
     id: 'herb',
     name: 'ไม้ล้มลุก',
     pumpOn: false,
-    values: { soilWaterKpa: 32.5 },
+    values: {},
     valveId: ZONE_VALVE_IDS.herb,
   },
   {
     id: 'rice',
     name: 'นาข้าว',
     pumpOn: false,
-    values: { etoMmPerHour: 0.42 },
+    values: {},
     valveId: ZONE_VALVE_IDS.rice,
   },
   {
     id: 'sunnhemp',
     name: 'ปอเทือง',
     pumpOn: false,
-    values: { soilTempC: 26.8, soilHumidity: 58.5 },
+    values: {},
     valveId: ZONE_VALVE_IDS.sunnhemp,
   },
   {
     id: 'sunflower',
     name: 'ทานตะวัน',
     pumpOn: false,
-    values: { soilMoisturePercent: 41 },
+    values: {},
     valveId: ZONE_VALVE_IDS.sunflower,
   },
   {
     id: 'potted',
     name: 'ไม้กระถาง',
     pumpOn: false,
-    values: { soilWaterKpa: 18.4 },
+    values: {},
     valveId: ZONE_VALVE_IDS.potted,
   },
 ];
@@ -110,6 +111,7 @@ export function getStore(): FarmStore {
 export function updateWeather(patch: Partial<Weather>): Weather {
   const store = getStore();
 
+  // merge เฉพาะฟิลด์ที่ส่งมา → ค่าที่เคยได้รับค้างอยู่จนกว่าจะมีค่าใหม่ทับ
   store.weather = { ...store.weather, ...patch };
   store.updatedAt = new Date().toISOString();
 
