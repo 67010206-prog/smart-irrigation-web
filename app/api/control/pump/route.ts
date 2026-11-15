@@ -14,6 +14,7 @@ import {
   getZoneConfig,
 } from '@/lib/server/nodered';
 import { ensureMqttBridge, getMqttStatus } from '@/lib/server/mqttBridge';
+import { hydrateStore, persistStore } from '@/lib/server/persistence';
 import {
   enqueuePumpCommand,
   finishCommand,
@@ -40,6 +41,9 @@ const ZONE_IDS: ZoneId[] = [
  * อ่านเฉพาะแปลงเดียว
  */
 export async function GET(request: Request) {
+  // cold start → ค่าสถานะล่าสุดที่เคยบันทึกไว้
+  await hydrateStore();
+
   ensureMqttBridge();
 
   const { searchParams } = new URL(request.url);
@@ -246,6 +250,9 @@ export async function POST(request: Request) {
   // วาล์วตัวเดียวรดหลายแปลง → การ์ดทุกใบที่แชร์วาล์วขึ้นสถานะตรงกัน
   const sharedZones = reconcileSharedValves();
   const zone = sharedZones.find((item) => item.id === zoneId) ?? null;
+
+  // สถานะหลังสั่งต้องอยู่รอด cold start ด้วย
+  persistStore();
 
   return NextResponse.json({
     ok: true,

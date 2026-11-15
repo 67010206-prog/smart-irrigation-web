@@ -73,7 +73,8 @@ export default function PumpPauseAlert({ alert }: { alert: PumpAlert | null }) {
   const remaining =
     anchor.base === null ? null : Math.max(0, anchor.base - elapsedSeconds);
 
-  const groups = alert.pausedGroups.map(groupLabel).join(' · ');
+  // หลาย group อาจเป็นแปลงเดียวกัน (วาล์ว 4 ร่วมกัน) → แสดงชื่อแปลงครั้งเดียว
+  const groups = Array.from(new Set(alert.pausedGroups.map(groupLabel))).join(' · ');
 
   return (
     <div className="pump-alert" role="alert" aria-live="assertive">
