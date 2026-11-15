@@ -1,26 +1,30 @@
 import type { ReactNode } from 'react';
 import {
+  AlertTriangle,
   CloudSun,
   Droplets,
+  Gauge,
   RefreshCw,
+  Sun,
+  SunMedium,
   ThermometerSun,
+  Wind,
 } from 'lucide-react';
 
 import WaterTankCard from './WaterTank';
 
-import type { WaterTank, Zone, ZoneId, ZoneValues } from '../lib/types/iot';
+import type { WaterTank, Weather, Zone, ZoneId, ZoneValues } from '../lib/types/iot';
 import { getZoneConfig } from '../lib/zoneConfig';
 
 interface ControlProps {
-  weather: {
-    temperatureC: number | null;
-    humidity: number | null;
-    etoMmPerDay: number | null;
-  };
+  weather: Weather;
   waterTank: WaterTank | null;
   zones: Zone[];
   busyZone: ZoneId | null;
   onTogglePump: (zoneId: ZoneId) => void;
+  /** คำเตือนตอนสั่งปิดวาล์วที่แปลงอื่นยังใช้อยู่ */
+  valveWarning?: { title: string; detail: string } | null;
+  onDismissValveWarning?: () => void;
   lastUpdated: Date;
   deviceOnline: boolean;
 }
@@ -148,6 +152,8 @@ export default function Control({
   zones,
   busyZone,
   onTogglePump,
+  valveWarning,
+  onDismissValveWarning,
   lastUpdated,
   deviceOnline,
 }: ControlProps) {
@@ -181,6 +187,28 @@ export default function Control({
           </button>
         </div>
       </div>
+
+      {valveWarning && (
+        <div className="notice-banner" role="alert">
+          <div className="notice-icon">
+            <AlertTriangle size={15} />
+          </div>
+          <div>
+            <strong>{valveWarning.title}</strong>
+            <span>{valveWarning.detail}</span>
+          </div>
+          {onDismissValveWarning && (
+            <button
+              type="button"
+              className="outline-button"
+              style={{ marginLeft: 'auto' }}
+              onClick={onDismissValveWarning}
+            >
+              ปิดข้อความ
+            </button>
+          )}
+        </div>
+      )}
 
       {/* แถวบน: อุณหภูมิ / ความชื้นรวม / ETo */}
       <div className="sensor-strip">
@@ -224,6 +252,65 @@ export default function Control({
             <span>mm/วัน</span>
           </div>
           <div className="metric-note">ค่าการคายระเหยอ้างอิง</div>
+        </article>
+      </div>
+
+      {/* แถวสถานีอากาศ: ความกดอากาศ / แสง / ลม / รังสีดวงอาทิตย์ */}
+      <div className="sensor-strip sensor-strip-4">
+        <article className="metric-card">
+          <div className="metric-top">
+            <div className="metric-icon green">
+              <Gauge size={19} strokeWidth={2} />
+            </div>
+          </div>
+          <div className="metric-title">ความกดอากาศ</div>
+          <div className="metric-value">
+            {fmt(weather.pressureHpa ?? null)}
+            <span>hPa</span>
+          </div>
+          <div className="metric-note">จากสถานีอากาศ</div>
+        </article>
+
+        <article className="metric-card">
+          <div className="metric-top">
+            <div className="metric-icon orange">
+              <Sun size={19} strokeWidth={2} />
+            </div>
+          </div>
+          <div className="metric-title">ความเข้มแสง</div>
+          <div className="metric-value">
+            {fmt(weather.lightLux ?? null, 0)}
+            <span>lux</span>
+          </div>
+          <div className="metric-note">ความสว่างที่วัดได้</div>
+        </article>
+
+        <article className="metric-card">
+          <div className="metric-top">
+            <div className="metric-icon blue">
+              <Wind size={19} strokeWidth={2} />
+            </div>
+          </div>
+          <div className="metric-title">ความเร็วลม</div>
+          <div className="metric-value">
+            {fmt(weather.windMs ?? null)}
+            <span>m/s</span>
+          </div>
+          <div className="metric-note">ที่ระดับใบพัดวัดลม</div>
+        </article>
+
+        <article className="metric-card">
+          <div className="metric-top">
+            <div className="metric-icon violet">
+              <SunMedium size={19} strokeWidth={2} />
+            </div>
+          </div>
+          <div className="metric-title">รังสีดวงอาทิตย์</div>
+          <div className="metric-value">
+            {fmt(weather.solarRadiationWm2 ?? null, 0)}
+            <span>W/m²</span>
+          </div>
+          <div className="metric-note">ใช้คำนวณ ETo</div>
         </article>
       </div>
 

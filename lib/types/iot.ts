@@ -38,6 +38,14 @@ export interface Weather {
   temperatureC: number | null;
   humidity: number | null;
   etoMmPerDay: number | null;
+  /** ความกดอากาศ (hPa) — จากสถานีอากาศ S700 */
+  pressureHpa?: number | null;
+  /** ความเข้มแสง (lux) */
+  lightLux?: number | null;
+  /** ความเร็วลม (m/s) ที่ระดับใบพัด */
+  windMs?: number | null;
+  /** รังสีแสงอาทิตย์ (W/m²) */
+  solarRadiationWm2?: number | null;
 }
 
 /** ถังน้ำหลักของระบบ (null = ยังไม่เคยได้รับค่า) */
@@ -62,6 +70,10 @@ export interface TelemetryPayload {
   temperature?: number;
   humidity?: number;
   etoMmPerDay?: number;
+  pressure?: number;
+  light?: number;
+  wind_speed?: number;
+  solar_radiation?: number;
   zones?: Partial<Record<ZoneId, ZoneValues>>;
 }
 

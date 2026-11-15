@@ -21,6 +21,11 @@ interface FarmStore {
   updatedAt: string;
   /** เวลาที่สั่งปั๊มล่าสุดของแต่ละแปลง (ใช้กันสถานะจาก Node-RED ย้อนกลับมาทับ) */
   pumpCommandAt: Partial<Record<ZoneId, number>>;
+  /**
+   * "ความตั้งใจ" ล่าสุดของแต่ละแปลงว่าเปิด/ปิดน้ำ
+   * แยกจาก pumpOn เพราะแปลงหลายตัวใช้วาล์วเดียวกัน → pumpOn ที่แสดงต้องมาจากการรวม intent
+   */
+  valveIntent: Partial<Record<ZoneId, boolean>>;
 }
 
 // ยังไม่ได้รับค่าจากเซนเซอร์ → null (ไม่แต่งค่าเริ่มต้นขึ้นเอง)
@@ -29,6 +34,10 @@ const initialWeather: Weather = {
   temperatureC: null,
   humidity: null,
   etoMmPerDay: null,
+  pressureHpa: null,
+  lightLux: null,
+  windMs: null,
+  solarRadiationWm2: null,
 };
 
 const initialWaterTank: WaterTank = {
@@ -85,6 +94,7 @@ function createStore(): FarmStore {
     zones: initialZones.map((zone) => ({ ...zone, values: { ...zone.values } })),
     updatedAt: new Date().toISOString(),
     pumpCommandAt: {},
+    valveIntent: {},
   };
 }
 
@@ -98,7 +108,11 @@ export function getStore(): FarmStore {
 
   // กันกรณี store ถูกสร้างจากโค้ดเวอร์ชันก่อนหน้า (dev hot reload) แล้วยังไม่มีฟิลด์ใหม่
   if (!store.waterTank) store.waterTank = { ...initialWaterTank };
+
+  // เผื่อ store เก่ายังไม่มีฟิลด์สถานีอากาศที่เพิ่มใหม่
+  store.weather = { ...initialWeather, ...store.weather };
   if (!store.pumpCommandAt) store.pumpCommandAt = {};
+  if (!store.valveIntent) store.valveIntent = {};
 
   for (const zone of store.zones) {
     if (typeof zone.valveId !== 'number') zone.valveId = ZONE_VALVE_IDS[zone.id];
@@ -145,6 +159,51 @@ export function updateZoneValues(
 }
 
 /**
+ * รวมสถานะวาล์วที่แปลงหลายตัวใช้ร่วมกัน
+ * วาล์วตัวเดียวรดได้หลายแปลง → เปิดถ้ามีอย่างน้อย 1 แปลงต้องการน้ำ (intent = true)
+ * แล้วเขียนสถานะเดียวกันลงการ์ดทุกใบที่ใช้วาล์วนั้น
+ */
+export function reconcileSharedValves(): Zone[] {
+  const store = getStore();
+  const byValve = new Map<string, Zone[]>();
+
+  for (const zone of store.zones) {
+    const key = String(zone.valveId ?? ZONE_VALVE_IDS[zone.id]);
+    const list = byValve.get(key) ?? [];
+
+    list.push(zone);
+    byValve.set(key, list);
+  }
+
+  const touched: Zone[] = [];
+
+  for (const [key, group] of byValve) {
+    // ยังไม่มีความตั้งใจของใครในวาล์วนี้ → ไม่ต้องคำนวณทับ
+    if (!group.some((zone) => store.valveIntent[zone.id] !== undefined)) {
+      continue;
+    }
+
+    const open = group.some((zone) => store.valveIntent[zone.id] === true);
+    let changed = false;
+
+    for (const zone of group) {
+      zone.valves = { ...(zone.valves ?? {}), [key]: open };
+
+      if (zone.pumpOn !== open) {
+        zone.pumpOn = open;
+        changed = true;
+      }
+
+      touched.push(zone);
+    }
+
+    if (changed) store.updatedAt = new Date().toISOString();
+  }
+
+  return touched;
+}
+
+/**
  * เปิด–ปิดปั๊มของแปลง
  * source = 'local' คือผู้ใช้สั่งจากหน้าเว็บ (จะบันทึกเวลาไว้กันสถานะเก่าทับ)
  * source = 'remote' คือค่าที่อ่านมาจาก Node-RED
@@ -163,11 +222,21 @@ export function setZonePump(
     store.pumpCommandAt[id] = Date.now();
   }
 
+  // ความตั้งใจของแปลงนี้คือค่าล่าสุดที่สั่ง/รายงานมา
+  store.valveIntent[id] = on;
+
   // ค่าไม่เปลี่ยน = ไม่ต้องขยับ updatedAt (กัน updatedAt ใหม่ทุกครั้งที่ poll)
-  if (zone.pumpOn === on) return zone;
+  if (zone.pumpOn === on) {
+    reconcileSharedValves();
+
+    return zone;
+  }
 
   zone.pumpOn = on;
   store.updatedAt = new Date().toISOString();
+
+  // วาล์วที่ใช้ร่วมกันต้องขึ้นตรงกันทุกใบ
+  reconcileSharedValves();
 
   return zone;
 }
@@ -191,12 +260,40 @@ export function updateZoneValves(
   const mainState = zone.valves[mainValve];
 
   if (typeof mainState === 'boolean') {
-    zone.pumpOn = mainState;
+    // ใช้เป็นความตั้งใจของแปลงนี้ ไม่ใช่เขียน pumpOn ตรง ๆ
+    // (ไม่งั้นแปลงที่ใช้วาล์วร่วมกันจะทับสถานะกันไปมา)
+    store.valveIntent[id] = mainState;
   }
 
+  // วาล์วเดียว/วาล์วใช้ร่วม → pumpOn ของทุกแปลงในวาล์วเดียวกันมาจาก intent ชุดเดียวกัน
+  reconcileSharedValves();
   store.updatedAt = new Date().toISOString();
 
   return zone;
+}
+
+/**
+ * แปลงอื่นที่ยังใช้ “วาล์วเดียวกัน” และต้องการน้ำอยู่
+ * ใช้บล็อกการปิดวาล์วที่จะตัดน้ำแปลงอื่น
+ */
+export function getValveHolders(zoneId: ZoneId): Zone[] {
+  const store = getStore();
+  const zone = store.zones.find((item) => item.id === zoneId);
+
+  if (!zone) return [];
+
+  const valveId = zone.valveId ?? ZONE_VALVE_IDS[zoneId];
+
+  return store.zones.filter((other) => {
+    if (other.id === zoneId) return false;
+
+    const otherValve = other.valveId ?? ZONE_VALVE_IDS[other.id];
+
+    if (otherValve !== valveId) return false;
+
+    // ใช้ intent เท่านั้น — pumpOn ที่แสดงถูกรวมมาจากวาล์วเดียวกัน จึงไม่ใช่ “ความต้องการน้ำ” ของแปลงนั้น
+    return store.valveIntent[other.id] === true;
+  });
 }
 
 /** เวลาที่สั่งปั๊มล่าสุดของแต่ละแปลง */

@@ -4,6 +4,7 @@ import { logEvent } from '@/lib/server/debugLog';
 
 import {
   getStore,
+  reconcileSharedValves,
   setZonePump,
   updateWaterTank,
   updateWeather,
@@ -141,10 +142,65 @@ export async function POST(request: Request) {
     );
   }
 
+  // ค่าจากสถานีอากาศ (S700) — ส่งมาแบบแบนหรือในก้อน weather ก็ได้
+  const pressureHpa = toNumber(body.pressure ?? weatherRecord?.pressureHpa);
+  const lightLux = toNumber(body.light ?? weatherRecord?.lightLux);
+  const windMs = toNumber(
+    body.wind_speed ?? body.windSpeed ?? weatherRecord?.windMs
+  );
+  const solarRadiationWm2 = toNumber(
+    body.solar_radiation ??
+      body.solarRadiation ??
+      weatherRecord?.solarRadiationWm2
+  );
+
+  // ค่าที่อยู่นอกช่วงที่เป็นไปได้จริง → ข้ามเฉพาะค่านั้น (ไม่ล้มทั้ง payload)
+  const acceptInRange = (
+    value: number | null,
+    min: number,
+    max: number,
+    field: string
+  ): number | null => {
+    if (value === null) return null;
+
+    if (value < min || value > max) {
+      logEvent(
+        'telemetry.reject',
+        `${field} นอกช่วง (${min}-${max}): ${value}`
+      );
+
+      return null;
+    }
+
+    return value;
+  };
+
+  // สถานี S700 ส่งความกดอากาศเป็น kPa (เช่น 101.27) → แปลงเป็น hPa (1012.7) ถ้าค่าต่ำกว่า 200
+  const pressureNormalized =
+    pressureHpa === null
+      ? null
+      : pressureHpa <= 200
+        ? Math.round(pressureHpa * 10 * 10) / 10
+        : pressureHpa;
+
+  const pressure = acceptInRange(pressureNormalized, 300, 1100, 'pressure');
+  const light = acceptInRange(lightLux, 0, 200000, 'light');
+  const wind = acceptInRange(windMs, 0, 100, 'wind_speed');
+  const solar = acceptInRange(
+    solarRadiationWm2,
+    0,
+    1500,
+    'solar_radiation'
+  );
+
   updateWeather({
     ...(temperature !== null ? { temperatureC: temperature } : {}),
     ...(humidity !== null ? { humidity } : {}),
     ...(etoMmPerDay !== null ? { etoMmPerDay } : {}),
+    ...(pressure !== null ? { pressureHpa: pressure } : {}),
+    ...(light !== null ? { lightLux: light } : {}),
+    ...(wind !== null ? { windMs: wind } : {}),
+    ...(solar !== null ? { solarRadiationWm2: solar } : {}),
   });
 
   // 2) ระดับน้ำในถังหลัก
@@ -271,6 +327,19 @@ export async function POST(request: Request) {
     logEvent('pump.state', 'ปรับสถานะปั๊มตาม Node-RED', { switched });
   }
 
+  // 6) วาล์วที่แปลงใช้ร่วมกัน → การ์ดทุกใบที่แชร์วาล์วต้องขึ้นสถานะเดียวกัน
+  const sharedZones = reconcileSharedValves();
+
+  if (sharedZones.length > 0) {
+    logEvent('pump.sharedValve', 'รวมสถานะวาล์วที่ใช้ร่วมกัน', {
+      zones: sharedZones.map((zone) => ({
+        zone: zone.id,
+        valveId: zone.valveId,
+        on: zone.pumpOn,
+      })),
+    });
+  }
+
   const {
     weather,
     waterTank,
@@ -282,6 +351,10 @@ export async function POST(request: Request) {
     temperatureC: weather.temperatureC,
     humidity: weather.humidity,
     etoMmPerDay: weather.etoMmPerDay,
+    pressureHpa: weather.pressureHpa,
+    lightLux: weather.lightLux,
+    windMs: weather.windMs,
+    solarRadiationWm2: weather.solarRadiationWm2,
     tankWaterLevel: waterTank.levelPercent,
     zones: zones ? Object.keys(zones) : [],
     valves: valveChanges.length > 0 ? valveChanges : undefined,

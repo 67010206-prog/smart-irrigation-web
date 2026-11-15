@@ -29,6 +29,10 @@ const EMPTY_WEATHER: Weather = {
   temperatureC: null,
   humidity: null,
   etoMmPerDay: null,
+  pressureHpa: null,
+  lightLux: null,
+  windMs: null,
+  solarRadiationWm2: null,
 };
 
 function readPumpLogs(): PumpLog[] {
@@ -78,6 +82,11 @@ export default function Dashboard() {
   const [waterTank, setWaterTank] = useState<WaterTank | null>(null);
   const [zones, setZones] = useState<Zone[]>([]);
   const [busyZone, setBusyZone] = useState<ZoneId | null>(null);
+  // คำเตือนเมื่อสั่งปิดวาล์วที่แปลงอื่นยังใช้อยู่
+  const [valveWarning, setValveWarning] = useState<{
+    title: string;
+    detail: string;
+  } | null>(null);
 
   const [history, setHistory] = useState<SensorPoint[]>([]);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -252,14 +261,35 @@ export default function Dashboard() {
 
     setBusyZone(zoneId);
 
-    const ok = await setZonePumpState(zoneId, nextState);
+    const result = await setZonePumpState(zoneId, nextState);
 
-    if (ok) {
+    if (result.blocked && result.conflict) {
+      // วาล์วเดียวกันยังมีแปลงอื่นใช้อยู่ → ไม่ปิดให้ พร้อมบอกว่าใครถืออยู่
+      const names = result.conflict.heldBy
+        .map((holder) => holder.name)
+        .join(', ');
+
+      setValveWarning({
+        title: `ปิดไม่ได้ — Valve ${result.conflict.valveId} ยังถูกใช้งานอยู่`,
+        detail: `${names} ยังต้องการน้ำอยู่ — ปิดที่แปลงนั้นก่อนแล้วจึงปิดวาล์วนี้`,
+      });
+    } else if (result.ok && result.zones) {
+      setValveWarning(null);
+
+      // API คืนทุกแปลงที่ใช้วาล์วร่วมกัน → การ์ดทุกใบอัปเดตพร้อมกัน
+      const byId = new Map(result.zones.map((item) => [item.id, item]));
+
       setZones((current) =>
-        current.map((item) =>
-          item.id === zoneId ? { ...item, pumpOn: nextState } : item
-        )
+        current.map((item) => {
+          const next = byId.get(item.id);
+
+          return next
+            ? { ...item, pumpOn: next.pumpOn, valves: next.valves }
+            : item;
+        })
       );
+    } else if (result.error) {
+      setValveWarning({ title: 'สั่งงานไม่สำเร็จ', detail: result.error });
     }
 
     setBusyZone(null);
@@ -300,6 +330,8 @@ export default function Dashboard() {
             zones={zones}
             busyZone={busyZone}
             onTogglePump={toggleZonePump}
+            valveWarning={valveWarning}
+            onDismissValveWarning={() => setValveWarning(null)}
             lastUpdated={lastUpdated}
             deviceOnline={deviceOnline}
           />

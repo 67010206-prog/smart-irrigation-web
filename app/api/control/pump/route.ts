@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 
-import { getStore, setZonePump } from '@/lib/server/store';
+import {
+  getStore,
+  getValveHolders,
+  reconcileSharedValves,
+  setZonePump,
+} from '@/lib/server/store';
 import {
   ZONE_GROUP_IDS,
   ZONE_VALVE_IDS,
@@ -152,10 +157,39 @@ export async function POST(request: Request) {
     }
   }
   const groupId = ZONE_GROUP_IDS[zoneId];
+  const { valveId } = getZoneConfig(zoneId);
+
+  // ปิดวาล์วที่แปลงอื่นยังใช้อยู่ไม่ได้ — จะตัดน้ำเขาโดยไม่ตั้งใจ
+  if (state === false) {
+    const holders = getValveHolders(zoneId);
+
+    if (holders.length > 0) {
+      const heldBy = holders.map((item) => ({ zone: item.id, name: item.name }));
+      const names = heldBy.map((item) => item.name).join(', ');
+
+      logEvent(
+        'pump.blocked',
+        'ปิดวาล์วไม่ได้ — แปลงอื่นยังใช้วาล์วเดียวกัน',
+        { zone: zoneId, valve_id: valveId, heldBy }
+      );
+
+      return NextResponse.json(
+        {
+          ok: false,
+          blocked: true,
+          code: 'VALVE_IN_USE',
+          error: `ปิดไม่ได้: วาล์ว ${valveId} ยังถูกใช้โดย ${names}`,
+          zone: zoneId,
+          valveId,
+          heldBy,
+        },
+        { status: 409 }
+      );
+    }
+  }
 
   // ทุกคำสั่งถูกบันทึกในคิวก่อน → ถ้าส่งตรงไม่สำเร็จ Node-RED ยังมารับได้
   const command = enqueuePumpCommand(zoneId, state);
-  const { valveId } = getZoneConfig(zoneId);
 
   logEvent('pump.command', `สั่ง ${zoneId} = ${state ? 'ON' : 'OFF'}`, {
     zone: zoneId,
@@ -197,11 +231,16 @@ export async function POST(request: Request) {
   // ส่งตรงสำเร็จ = ไม่ต้องให้ Node-RED ดึงซ้ำ
   finishCommand(command.commandId, 'done', 'ส่งตรงไป Node-RED สำเร็จ');
 
-  const zone = setZonePump(zoneId, state, 'local');
+  setZonePump(zoneId, state, 'local');
+
+  // วาล์วตัวเดียวรดหลายแปลง → การ์ดทุกใบที่แชร์วาล์วขึ้นสถานะตรงกัน
+  const sharedZones = reconcileSharedValves();
+  const zone = sharedZones.find((item) => item.id === zoneId) ?? null;
 
   return NextResponse.json({
     ok: true,
     zone,
+    sharedZones,
     command: {
       commandId: command.commandId,
       zone: command.zone,

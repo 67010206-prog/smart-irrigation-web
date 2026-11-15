@@ -1,6 +1,7 @@
 import type {
   FarmSnapshot,
   TelemetryPayload,
+  Zone,
   ZoneId,
 } from '../types/iot';
 
@@ -62,11 +63,31 @@ export async function pushSensorTelemetry(
   }
 }
 
-/** POST /api/control/pump — เปิด–ปิดปั๊มของแปลง */
+/** แปลงที่ยังถือวาล์วนี้อยู่ (ส่งกลับมาตอนสั่งปิดไม่ได้) */
+export interface ValveHolder {
+  zone: ZoneId;
+  name: string;
+}
+
+export interface PumpCommandResult {
+  ok: boolean;
+  /** แปลงที่สถานะเปลี่ยน (รวมแปลงอื่นที่ใช้วาล์วร่วมกัน) */
+  zones?: Zone[];
+  /** true = ถูกบล็อกเพราะแปลงอื่นยังใช้วาล์วเดียวกันอยู่ */
+  blocked?: boolean;
+  /** ข้อมูลวาล์วที่ถูกใช้อยู่ */
+  conflict?: { valveId: number; heldBy: ValveHolder[] };
+  error?: string;
+}
+
+/**
+ * POST /api/control/pump — เปิด–ปิดปั๊มของแปลง
+ * คืนผลลัพธ์พร้อมรายชื่อแปลงที่เปลี่ยน หรือข้อมูลแปลงที่ยังถือวาล์วอยู่
+ */
 export async function setZonePumpState(
   zone: ZoneId,
   state: boolean
-): Promise<boolean> {
+): Promise<PumpCommandResult> {
   try {
     const res = await fetch(`${getApiBaseUrl()}/api/control/pump`, {
       method: 'POST',
@@ -81,9 +102,40 @@ export async function setZonePumpState(
       }),
     });
 
-    return res.ok;
+    const data = (await res.json().catch(() => null)) as {
+      error?: string;
+      valveId?: number;
+      heldBy?: ValveHolder[];
+      zone?: Zone | null;
+      sharedZones?: Zone[];
+    } | null;
+
+    if (res.status === 409 && data?.heldBy?.length) {
+      return {
+        ok: false,
+        blocked: true,
+        error: data.error ?? 'ปิดวาล์วไม่ได้ — แปลงอื่นยังใช้งานอยู่',
+        conflict: {
+          valveId: Number(data.valveId),
+          heldBy: data.heldBy,
+        },
+      };
+    }
+
+    if (!res.ok) {
+      return { ok: false, error: data?.error ?? `HTTP ${res.status}` };
+    }
+
+    const zones = data?.sharedZones?.length
+      ? data.sharedZones
+      : data?.zone
+        ? [data.zone]
+        : [];
+
+    return { ok: zones.length > 0, zones };
   } catch (err) {
     console.error('[API Service] Failed to set zone pump:', err);
-    return false;
+
+    return { ok: false, error: 'เชื่อมต่อ server ไม่ได้' };
   }
 }
