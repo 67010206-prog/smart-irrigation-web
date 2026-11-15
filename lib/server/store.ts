@@ -332,3 +332,100 @@ export function getValveHolders(zoneId: ZoneId): Zone[] {
 export function getPumpCommandAt(): Partial<Record<ZoneId, number>> {
   return getStore().pumpCommandAt ?? {};
 }
+
+/** มีค่าจริงจากเซนเซอร์แล้วหรือยัง (ใช้ตัดสินว่าจะ hydrate/persist ไหม) */
+export function hasLiveData(): boolean {
+  const store = getStore();
+
+  const weatherHasValue = Object.values(store.weather).some(
+    (value) => typeof value === 'number' && Number.isFinite(value)
+  );
+
+  const tankHasValue =
+    typeof store.waterTank.levelPercent === 'number' &&
+    Number.isFinite(store.waterTank.levelPercent);
+
+  const zoneHasValue = store.zones.some(
+    (zone) => Object.keys(zone.values ?? {}).length > 0
+  );
+
+  return weatherHasValue || tankHasValue || zoneHasValue;
+}
+
+/** ก้อนข้อมูลที่บันทึกลงที่เก็บถาวร */
+export interface StoreSnapshot {
+  version: 1;
+  savedAt: string;
+  updatedAt: string;
+  weather: Weather;
+  waterTank: WaterTank;
+  zones: Zone[];
+  pumpCommandAt: Partial<Record<ZoneId, number>>;
+  valveIntent: Partial<Record<ZoneId, boolean>>;
+}
+
+/** ดึงก้อนข้อมูลปัจจุบันไปบันทึก */
+export function exportSnapshot(): StoreSnapshot {
+  const store = getStore();
+
+  return {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    updatedAt: store.updatedAt,
+    weather: { ...store.weather },
+    waterTank: { ...store.waterTank },
+    zones: store.zones.map((zone) => ({
+      ...zone,
+      values: { ...(zone.values ?? {}) },
+      valves: { ...(zone.valves ?? {}) },
+    })),
+    pumpCommandAt: { ...(store.pumpCommandAt ?? {}) },
+    valveIntent: { ...(store.valveIntent ?? {}) },
+  };
+}
+
+/**
+ * คืนค่าจาก snapshot ที่เคยบันทึกไว้ (ใช้ตอน cold start)
+ * คืน true ถ้าใช้ snapshot ได้
+ */
+export function importSnapshot(raw: unknown): boolean {
+  if (!raw || typeof raw !== 'object') return false;
+
+  const snapshot = raw as Partial<StoreSnapshot>;
+
+  if (!snapshot.weather || typeof snapshot.weather !== 'object') return false;
+
+  const store = getStore();
+
+  store.weather = { ...initialWeather, ...snapshot.weather };
+
+  if (snapshot.waterTank && typeof snapshot.waterTank === 'object') {
+    store.waterTank = { ...initialWaterTank, ...snapshot.waterTank };
+  }
+
+  if (Array.isArray(snapshot.zones)) {
+    for (const saved of snapshot.zones) {
+      const zone = store.zones.find((item) => item.id === saved?.id);
+
+      if (!zone) continue;
+
+      zone.values = { ...(saved.values ?? {}) };
+      zone.valves = { ...(saved.valves ?? {}) };
+
+      if (typeof saved.pumpOn === 'boolean') zone.pumpOn = saved.pumpOn;
+      if (typeof saved.valveId === 'number') zone.valveId = saved.valveId;
+    }
+  }
+
+  if (snapshot.pumpCommandAt && typeof snapshot.pumpCommandAt === 'object') {
+    store.pumpCommandAt = { ...snapshot.pumpCommandAt };
+  }
+
+  if (snapshot.valveIntent && typeof snapshot.valveIntent === 'object') {
+    store.valveIntent = { ...snapshot.valveIntent };
+  }
+
+  if (typeof snapshot.updatedAt === 'string') store.updatedAt = snapshot.updatedAt;
+
+  return true;
+}

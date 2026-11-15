@@ -7,6 +7,7 @@ import {
   fetchPumpStatus,
 } from '@/lib/server/nodered';
 import { ensureMqttBridge } from '@/lib/server/mqttBridge';
+import { hydrateStore } from '@/lib/server/persistence';
 import { logEvent } from '@/lib/server/debugLog';
 
 import type { ZoneId } from '@/lib/types/iot';
@@ -83,6 +84,9 @@ async function syncPumpStatus(): Promise<void> {
 
 /** GET /api/sensors/latest — ค่าล่าสุดของค่าอากาศและ 5 แปลง */
 export async function GET() {
+  // cold start → ดึงค่าล่าสุดที่เคยบันทึกไว้กลับมาก่อนตอบ
+  await hydrateStore();
+
   // ฟังสถานะปั๊มจริงจาก MQTT (pump/control/groupX) — เริ่มครั้งแรกที่มีคนเรียก API
   ensureMqttBridge();
 

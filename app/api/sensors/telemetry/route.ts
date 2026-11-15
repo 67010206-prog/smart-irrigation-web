@@ -13,6 +13,7 @@ import {
 } from '@/lib/server/store';
 
 import { parsePumpStatus } from '@/lib/server/nodered';
+import { persistStore } from '@/lib/server/persistence';
 
 import type { ZoneId, ZoneValues } from '@/lib/types/iot';
 
@@ -369,6 +370,9 @@ export async function POST(request: Request) {
     zones: zones ? Object.keys(zones) : [],
     valves: valveChanges.length > 0 ? valveChanges : undefined,
   });
+
+  // 6.5) บันทึกค่าล่าสุดลงที่เก็บถาวร (ถ้าตั้งค่าไว้) → cold start ก็ยังมีข้อมูล
+  persistStore();
 
   return NextResponse.json({
     ok: true,
