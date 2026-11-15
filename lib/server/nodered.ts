@@ -49,8 +49,9 @@ export function getNodeRedStatusUrl(): string {
 export async function forwardPumpCommand(
   zone: ZoneId,
   state: boolean,
-  timeoutMs: number = COMMAND_TIMEOUT_MS
+  options: { commandId?: string; timeoutMs?: number } = {}
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const timeoutMs = options.timeoutMs ?? COMMAND_TIMEOUT_MS;
   const url = getNodeRedPumpUrl();
   const groupId = ZONE_GROUP_IDS[zone];
 
@@ -67,6 +68,8 @@ export async function forwardPumpCommand(
         valve_id: valveId,
         zone,
         command: state ? 'ON' : 'OFF',
+        // ให้ flow ฝั่ง Node-RED POST /api/control/pump/ack กลับได้ทันที
+        ...(options.commandId ? { commandId: options.commandId } : {}),
       }),
       cache: 'no-store',
       signal: AbortSignal.timeout(timeoutMs),

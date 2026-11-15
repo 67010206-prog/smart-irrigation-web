@@ -1,26 +1,31 @@
 import type { ReactNode } from 'react';
 import {
+  AlertTriangle,
   CloudSun,
   Droplets,
+  Gauge,
   RefreshCw,
+  Sun,
+  SunMedium,
   ThermometerSun,
+  Wind,
 } from 'lucide-react';
 
 import WaterTankCard from './WaterTank';
+import WaterBalance from './WaterBalance';
 
-import type { WaterTank, Zone, ZoneId, ZoneValues } from '../lib/types/iot';
+import type { WaterTank, Weather, Zone, ZoneId, ZoneValues } from '../lib/types/iot';
 import { getZoneConfig } from '../lib/zoneConfig';
 
 interface ControlProps {
-  weather: {
-    temperatureC: number;
-    humidity: number;
-    etoMmPerDay: number;
-  };
+  weather: Weather;
   waterTank: WaterTank | null;
   zones: Zone[];
   busyZone: ZoneId | null;
-  onTogglePump: (zoneId: ZoneId) => void;
+  onTogglePump: (zoneId: ZoneId, scope?: 'valve') => void;
+  /** คำเตือนตอนสั่งปิดวาล์วที่แปลงอื่นยังใช้อยู่ */
+  valveWarning?: { title: string; detail: string } | null;
+  onDismissValveWarning?: () => void;
   lastUpdated: Date;
   deviceOnline: boolean;
 }
@@ -69,11 +74,13 @@ function PumpButton({
   zones,
   busyZone,
   onTogglePump,
+  scope,
 }: {
   zoneId: ZoneId;
   zones: Zone[];
   busyZone: ZoneId | null;
-  onTogglePump: (zoneId: ZoneId) => void;
+  onTogglePump: (zoneId: ZoneId, scope?: 'valve') => void;
+  scope?: 'valve';
 }) {
   const on = isPumpOn(zones, zoneId);
   const busy = busyZone === zoneId;
@@ -84,7 +91,7 @@ function PumpButton({
       className={`pump-state-button ${on ? 'is-on' : ''}`}
       aria-pressed={on}
       disabled={busy}
-      onClick={() => onTogglePump(zoneId)}
+      onClick={() => onTogglePump(zoneId, scope)}
       title="กดเพื่อเปิด–ปิดปั๊มน้ำ"
     >
       <span className="pump-state-dot" />
@@ -102,6 +109,7 @@ function ZoneCard({
   zones,
   busyZone,
   onTogglePump,
+  scope,
   wide = false,
   children,
 }: {
@@ -111,7 +119,9 @@ function ZoneCard({
   zoneId: ZoneId;
   zones: Zone[];
   busyZone: ZoneId | null;
-  onTogglePump: (zoneId: ZoneId) => void;
+  onTogglePump: (zoneId: ZoneId, scope?: 'valve') => void;
+  /** สั่งในนามของวาล์วทั้งตัว (แปลงที่ใช้วาล์วร่วมกัน) */
+  scope?: 'valve';
   wide?: boolean;
   children: ReactNode;
 }) {
@@ -137,6 +147,7 @@ function ZoneCard({
         zones={zones}
         busyZone={busyZone}
         onTogglePump={onTogglePump}
+        scope={scope}
       />
     </article>
   );
@@ -148,6 +159,8 @@ export default function Control({
   zones,
   busyZone,
   onTogglePump,
+  valveWarning,
+  onDismissValveWarning,
   lastUpdated,
   deviceOnline,
 }: ControlProps) {
@@ -181,6 +194,28 @@ export default function Control({
           </button>
         </div>
       </div>
+
+      {valveWarning && (
+        <div className="notice-banner" role="alert">
+          <div className="notice-icon">
+            <AlertTriangle size={15} />
+          </div>
+          <div>
+            <strong>{valveWarning.title}</strong>
+            <span>{valveWarning.detail}</span>
+          </div>
+          {onDismissValveWarning && (
+            <button
+              type="button"
+              className="outline-button"
+              style={{ marginLeft: 'auto' }}
+              onClick={onDismissValveWarning}
+            >
+              ปิดข้อความ
+            </button>
+          )}
+        </div>
+      )}
 
       {/* แถวบน: อุณหภูมิ / ความชื้นรวม / ETo */}
       <div className="sensor-strip">
@@ -224,6 +259,65 @@ export default function Control({
             <span>mm/วัน</span>
           </div>
           <div className="metric-note">ค่าการคายระเหยอ้างอิง</div>
+        </article>
+      </div>
+
+      {/* แถวสถานีอากาศ: ความกดอากาศ / แสง / ลม / รังสีดวงอาทิตย์ */}
+      <div className="sensor-strip sensor-strip-4">
+        <article className="metric-card">
+          <div className="metric-top">
+            <div className="metric-icon green">
+              <Gauge size={19} strokeWidth={2} />
+            </div>
+          </div>
+          <div className="metric-title">ความกดอากาศ</div>
+          <div className="metric-value">
+            {fmt(weather.pressureHpa ?? null)}
+            <span>hPa</span>
+          </div>
+          <div className="metric-note">จากสถานีอากาศ</div>
+        </article>
+
+        <article className="metric-card">
+          <div className="metric-top">
+            <div className="metric-icon orange">
+              <Sun size={19} strokeWidth={2} />
+            </div>
+          </div>
+          <div className="metric-title">ความเข้มแสง</div>
+          <div className="metric-value">
+            {fmt(weather.lightLux ?? null, 0)}
+            <span>lux</span>
+          </div>
+          <div className="metric-note">ความสว่างที่วัดได้</div>
+        </article>
+
+        <article className="metric-card">
+          <div className="metric-top">
+            <div className="metric-icon blue">
+              <Wind size={19} strokeWidth={2} />
+            </div>
+          </div>
+          <div className="metric-title">ความเร็วลม</div>
+          <div className="metric-value">
+            {fmt(weather.windMs ?? null)}
+            <span>m/s</span>
+          </div>
+          <div className="metric-note">ที่ระดับใบพัดวัดลม</div>
+        </article>
+
+        <article className="metric-card">
+          <div className="metric-top">
+            <div className="metric-icon violet">
+              <SunMedium size={19} strokeWidth={2} />
+            </div>
+          </div>
+          <div className="metric-title">รังสีดวงอาทิตย์</div>
+          <div className="metric-value">
+            {fmt(weather.solarRadiationWm2 ?? null, 0)}
+            <span>W/m²</span>
+          </div>
+          <div className="metric-note">ใช้คำนวณ ETo</div>
         </article>
       </div>
 
@@ -275,61 +369,43 @@ export default function Control({
           />
         </ZoneCard>
 
+        {/* 3 แปลงที่ใช้วาล์ว 4 ร่วมกัน → การ์ดเดียว ปุ่มเดียว */}
         <ZoneCard
           index={3}
-          title="ปอเทือง"
-          subtitle="Sunn hemp · Soil temperature & humidity"
+          title="แปลงดอกไม้รวม (Valve 4)"
+          subtitle="ปอเทือง · ทานตะวัน · ไม้กระถาง — ใช้วาล์ว 4 ตัวเดียวกัน"
           zoneId="sunnhemp"
           zones={zones}
           busyZone={busyZone}
           onTogglePump={onTogglePump}
+          scope="valve"
+          wide
         >
           <ValueCard
-            label="อุณหภูมิในดิน"
+            label="อุณหภูมิดิน · ปอเทือง"
             value={fmt(getValue(zones, 'sunnhemp', 'soilTempC'))}
             unit="°C"
           />
           <ValueCard
-            label="ความชื้น (Humidity)"
+            label="ความชื้น · ปอเทือง"
             value={fmt(getValue(zones, 'sunnhemp', 'soilHumidity'))}
             unit="%"
           />
-        </ZoneCard>
-
-        <ZoneCard
-          index={4}
-          title="ทานตะวัน"
-          subtitle="Sunflower · Soil moisture"
-          zoneId="sunflower"
-          zones={zones}
-          busyZone={busyZone}
-          onTogglePump={onTogglePump}
-        >
           <ValueCard
-            label="ความชื้นในดิน"
+            label="ความชื้นในดิน · ทานตะวัน"
             value={fmt(getValue(zones, 'sunflower', 'soilMoisturePercent'))}
             unit="%"
+          />
+          <ValueCard
+            label="ความชื้นในดิน · ไม้กระถาง"
+            value={fmt(getValue(zones, 'potted', 'soilWaterKpa'))}
+            unit="kPa"
           />
         </ZoneCard>
       </div>
 
-      {/* แปลงที่ 5 (การ์ดกว้าง) */}
-      <ZoneCard
-        index={5}
-        title="ไม้กระถาง"
-        subtitle="Potted plant · Soil water potential"
-        zoneId="potted"
-        zones={zones}
-        busyZone={busyZone}
-        onTogglePump={onTogglePump}
-        wide
-      >
-        <ValueCard
-          label="ความชื้นในดิน"
-          value={fmt(getValue(zones, 'potted', 'soilWaterKpa'))}
-          unit="kPa"
-        />
-      </ZoneCard>
+      {/* งบน้ำรายแปลง (ท้าย Dashboard) */}
+      <WaterBalance />
 
       <div className="page-footnote">
         AgriFlow Dashboard <span>·</span> Prototype สำหรับพัฒนาและทดสอบระบบ IoT

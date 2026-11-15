@@ -33,6 +33,26 @@ export function getZoneConfig(zone: ZoneId): ZoneConfig {
   return { groupId: ZONE_GROUP_IDS[zone], valveId: ZONE_VALVE_IDS[zone] };
 }
 
+/**
+ * วาล์ว → แปลงที่ใช้วาล์วตัวนั้นร่วมกัน (สร้างจาก ZONE_VALVE_IDS อัตโนมัติ)
+ * เช่น valve 4 รด 3 แปลง: sunnhemp, sunflower, potted
+ */
+export const VALVE_ZONE_IDS: Record<number, ZoneId[]> = Object.keys(
+  ZONE_VALVE_IDS
+).reduce<Record<number, ZoneId[]>>((acc, key) => {
+  const zone = key as ZoneId;
+  const valveId = ZONE_VALVE_IDS[zone];
+
+  acc[valveId] = [...(acc[valveId] ?? []), zone];
+
+  return acc;
+}, {});
+
+/** แปลงทั้งหมดที่แชร์วาล์วเดียวกับ zone นี้ (รวมตัวเองด้วย) */
+export function zonesSharingValve(zone: ZoneId): ZoneId[] {
+  return VALVE_ZONE_IDS[ZONE_VALVE_IDS[zone]] ?? [zone];
+}
+
 /** group_id → zone (คืน undefined ถ้าไม่รู้จัก) */
 export function zoneFromGroup(groupId: string): ZoneId | undefined {
   const target = groupId.trim().toLowerCase();

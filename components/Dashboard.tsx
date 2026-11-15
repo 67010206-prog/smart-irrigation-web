@@ -24,10 +24,15 @@ import type {
 // ดึงข้อมูลจาก backend เป็นรอบ (แก้ตัวเลขนี้ถ้าต้องการถี่ขึ้น/ห่างขึ้น)
 const POLL_INTERVAL_MS = 10000;
 
+// ยังไม่ได้รับค่า → null (แสดง "--" ไม่ใช่ 0)
 const EMPTY_WEATHER: Weather = {
-  temperatureC: 0,
-  humidity: 0,
-  etoMmPerDay: 0,
+  temperatureC: null,
+  humidity: null,
+  etoMmPerDay: null,
+  pressureHpa: null,
+  lightLux: null,
+  windMs: null,
+  solarRadiationWm2: null,
 };
 
 function readPumpLogs(): PumpLog[] {
@@ -77,6 +82,11 @@ export default function Dashboard() {
   const [waterTank, setWaterTank] = useState<WaterTank | null>(null);
   const [zones, setZones] = useState<Zone[]>([]);
   const [busyZone, setBusyZone] = useState<ZoneId | null>(null);
+  // คำเตือนเมื่อสั่งปิดวาล์วที่แปลงอื่นยังใช้อยู่
+  const [valveWarning, setValveWarning] = useState<{
+    title: string;
+    detail: string;
+  } | null>(null);
 
   const [history, setHistory] = useState<SensorPoint[]>([]);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -135,34 +145,42 @@ export default function Dashboard() {
 
       setLastUpdated(now);
 
-      // บันทึกประวัติ (ข้ามรอบที่ค่าไม่เปลี่ยน)
-      setHistory((current) => {
-        const last = current[current.length - 1];
+      // บันทึกประวัติ (ข้ามรอบที่ค่าไม่เปลี่ยน / ข้ามถ้ายังไม่เคยได้รับค่าจริง)
+      const { temperatureC, humidity, etoMmPerDay } = snapshot.weather;
 
-        if (
-          last &&
-          last.temperature === snapshot.weather.temperatureC &&
-          last.humidity === snapshot.weather.humidity &&
-          last.etoMmPerDay === snapshot.weather.etoMmPerDay
-        ) {
-          return current;
-        }
+      if (
+        temperatureC !== null &&
+        humidity !== null &&
+        etoMmPerDay !== null
+      ) {
+        setHistory((current) => {
+          const last = current[current.length - 1];
 
-        return [
-          ...current.slice(-29),
-          {
-            timestamp: now,
-            time: now.toLocaleTimeString('th-TH', {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            }),
-            temperature: snapshot.weather.temperatureC,
-            humidity: snapshot.weather.humidity,
-            etoMmPerDay: snapshot.weather.etoMmPerDay,
-          },
-        ];
-      });
+          if (
+            last &&
+            last.temperature === temperatureC &&
+            last.humidity === humidity &&
+            last.etoMmPerDay === etoMmPerDay
+          ) {
+            return current;
+          }
+
+          return [
+            ...current.slice(-29),
+            {
+              timestamp: now,
+              time: now.toLocaleTimeString('th-TH', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              }),
+              temperature: temperatureC,
+              humidity,
+              etoMmPerDay,
+            },
+          ];
+        });
+      }
 
       timer = window.setTimeout(poll, POLL_INTERVAL_MS);
     };
@@ -232,7 +250,7 @@ export default function Dashboard() {
   // เปิด–ปิดปั๊มของแปลง
   // ==============================
 
-  const toggleZonePump = async (zoneId: ZoneId) => {
+  const toggleZonePump = async (zoneId: ZoneId, scope?: 'valve') => {
     if (busyZone) return;
 
     const zone = zones.find((item) => item.id === zoneId);
@@ -243,14 +261,35 @@ export default function Dashboard() {
 
     setBusyZone(zoneId);
 
-    const ok = await setZonePumpState(zoneId, nextState);
+    const result = await setZonePumpState(zoneId, nextState, { scope });
 
-    if (ok) {
+    if (result.blocked && result.conflict) {
+      // วาล์วเดียวกันยังมีแปลงอื่นใช้อยู่ → ไม่ปิดให้ พร้อมบอกว่าใครถืออยู่
+      const names = result.conflict.heldBy
+        .map((holder) => holder.name)
+        .join(', ');
+
+      setValveWarning({
+        title: `ปิดไม่ได้ — Valve ${result.conflict.valveId} ยังถูกใช้งานอยู่`,
+        detail: `${names} ยังต้องการน้ำอยู่ — ปิดที่แปลงนั้นก่อนแล้วจึงปิดวาล์วนี้`,
+      });
+    } else if (result.ok && result.zones) {
+      setValveWarning(null);
+
+      // API คืนทุกแปลงที่ใช้วาล์วร่วมกัน → การ์ดทุกใบอัปเดตพร้อมกัน
+      const byId = new Map(result.zones.map((item) => [item.id, item]));
+
       setZones((current) =>
-        current.map((item) =>
-          item.id === zoneId ? { ...item, pumpOn: nextState } : item
-        )
+        current.map((item) => {
+          const next = byId.get(item.id);
+
+          return next
+            ? { ...item, pumpOn: next.pumpOn, valves: next.valves }
+            : item;
+        })
       );
+    } else if (result.error) {
+      setValveWarning({ title: 'สั่งงานไม่สำเร็จ', detail: result.error });
     }
 
     setBusyZone(null);
@@ -291,6 +330,8 @@ export default function Dashboard() {
             zones={zones}
             busyZone={busyZone}
             onTogglePump={toggleZonePump}
+            valveWarning={valveWarning}
+            onDismissValveWarning={() => setValveWarning(null)}
             lastUpdated={lastUpdated}
             deviceOnline={deviceOnline}
           />
