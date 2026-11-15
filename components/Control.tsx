@@ -21,7 +21,7 @@ interface ControlProps {
   waterTank: WaterTank | null;
   zones: Zone[];
   busyZone: ZoneId | null;
-  onTogglePump: (zoneId: ZoneId) => void;
+  onTogglePump: (zoneId: ZoneId, scope?: 'valve') => void;
   /** คำเตือนตอนสั่งปิดวาล์วที่แปลงอื่นยังใช้อยู่ */
   valveWarning?: { title: string; detail: string } | null;
   onDismissValveWarning?: () => void;
@@ -73,11 +73,13 @@ function PumpButton({
   zones,
   busyZone,
   onTogglePump,
+  scope,
 }: {
   zoneId: ZoneId;
   zones: Zone[];
   busyZone: ZoneId | null;
-  onTogglePump: (zoneId: ZoneId) => void;
+  onTogglePump: (zoneId: ZoneId, scope?: 'valve') => void;
+  scope?: 'valve';
 }) {
   const on = isPumpOn(zones, zoneId);
   const busy = busyZone === zoneId;
@@ -88,7 +90,7 @@ function PumpButton({
       className={`pump-state-button ${on ? 'is-on' : ''}`}
       aria-pressed={on}
       disabled={busy}
-      onClick={() => onTogglePump(zoneId)}
+      onClick={() => onTogglePump(zoneId, scope)}
       title="กดเพื่อเปิด–ปิดปั๊มน้ำ"
     >
       <span className="pump-state-dot" />
@@ -106,6 +108,7 @@ function ZoneCard({
   zones,
   busyZone,
   onTogglePump,
+  scope,
   wide = false,
   children,
 }: {
@@ -115,7 +118,9 @@ function ZoneCard({
   zoneId: ZoneId;
   zones: Zone[];
   busyZone: ZoneId | null;
-  onTogglePump: (zoneId: ZoneId) => void;
+  onTogglePump: (zoneId: ZoneId, scope?: 'valve') => void;
+  /** สั่งในนามของวาล์วทั้งตัว (แปลงที่ใช้วาล์วร่วมกัน) */
+  scope?: 'valve';
   wide?: boolean;
   children: ReactNode;
 }) {
@@ -141,6 +146,7 @@ function ZoneCard({
         zones={zones}
         busyZone={busyZone}
         onTogglePump={onTogglePump}
+        scope={scope}
       />
     </article>
   );
@@ -362,61 +368,40 @@ export default function Control({
           />
         </ZoneCard>
 
+        {/* 3 แปลงที่ใช้วาล์ว 4 ร่วมกัน → การ์ดเดียว ปุ่มเดียว */}
         <ZoneCard
           index={3}
-          title="ปอเทือง"
-          subtitle="Sunn hemp · Soil temperature & humidity"
+          title="แปลงดอกไม้รวม (Valve 4)"
+          subtitle="ปอเทือง · ทานตะวัน · ไม้กระถาง — ใช้วาล์ว 4 ตัวเดียวกัน"
           zoneId="sunnhemp"
           zones={zones}
           busyZone={busyZone}
           onTogglePump={onTogglePump}
+          scope="valve"
+          wide
         >
           <ValueCard
-            label="อุณหภูมิในดิน"
+            label="อุณหภูมิดิน · ปอเทือง"
             value={fmt(getValue(zones, 'sunnhemp', 'soilTempC'))}
             unit="°C"
           />
           <ValueCard
-            label="ความชื้น (Humidity)"
+            label="ความชื้น · ปอเทือง"
             value={fmt(getValue(zones, 'sunnhemp', 'soilHumidity'))}
             unit="%"
           />
-        </ZoneCard>
-
-        <ZoneCard
-          index={4}
-          title="ทานตะวัน"
-          subtitle="Sunflower · Soil moisture"
-          zoneId="sunflower"
-          zones={zones}
-          busyZone={busyZone}
-          onTogglePump={onTogglePump}
-        >
           <ValueCard
-            label="ความชื้นในดิน"
+            label="ความชื้นในดิน · ทานตะวัน"
             value={fmt(getValue(zones, 'sunflower', 'soilMoisturePercent'))}
             unit="%"
           />
+          <ValueCard
+            label="ความชื้นในดิน · ไม้กระถาง"
+            value={fmt(getValue(zones, 'potted', 'soilWaterKpa'))}
+            unit="kPa"
+          />
         </ZoneCard>
       </div>
-
-      {/* แปลงที่ 5 (การ์ดกว้าง) */}
-      <ZoneCard
-        index={5}
-        title="ไม้กระถาง"
-        subtitle="Potted plant · Soil water potential"
-        zoneId="potted"
-        zones={zones}
-        busyZone={busyZone}
-        onTogglePump={onTogglePump}
-        wide
-      >
-        <ValueCard
-          label="ความชื้นในดิน"
-          value={fmt(getValue(zones, 'potted', 'soilWaterKpa'))}
-          unit="kPa"
-        />
-      </ZoneCard>
 
       <div className="page-footnote">
         AgriFlow Dashboard <span>·</span> Prototype สำหรับพัฒนาและทดสอบระบบ IoT

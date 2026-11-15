@@ -86,7 +86,8 @@ export interface PumpCommandResult {
  */
 export async function setZonePumpState(
   zone: ZoneId,
-  state: boolean
+  state: boolean,
+  options?: { scope?: 'valve' }
 ): Promise<PumpCommandResult> {
   try {
     const res = await fetch(`${getApiBaseUrl()}/api/control/pump`, {
@@ -99,6 +100,7 @@ export async function setZonePumpState(
         command: state ? 'ON' : 'OFF',
         valveId: ZONE_VALVE_IDS[zone],
         source: 'web',
+        ...(options?.scope ? { scope: options.scope } : {}),
       }),
     });
 

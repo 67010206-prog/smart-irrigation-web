@@ -272,6 +272,37 @@ export function updateZoneValves(
   return zone;
 }
 
+/** แปลงทุกตัว (รวมตัวเอง) ที่ใช้ valve เดียวกับ zone นี้ */
+export function zonesInSameValveGroup(zoneId: ZoneId): Zone[] {
+  const store = getStore();
+  const zone = store.zones.find((item) => item.id === zoneId);
+
+  if (!zone) return [];
+
+  const valveId = zone.valveId ?? ZONE_VALVE_IDS[zoneId];
+
+  return store.zones.filter(
+    (other) => (other.valveId ?? ZONE_VALVE_IDS[other.id]) === valveId
+  );
+}
+
+/**
+ * ตั้งความตั้งใจให้ทุกแปลงที่ใช้ valve เดียวกัน (คำสั่งระดับ “วาล์ว” ไม่ใช่รายแปลง)
+ * ใช้เมื่อ UI รวมแปลงที่ใช้วาล์วร่วมกันเป็นหน่วยเดียวแล้ว
+ */
+export function setValveGroupIntent(zoneId: ZoneId, on: boolean): Zone[] {
+  const store = getStore();
+  const group = zonesInSameValveGroup(zoneId);
+
+  for (const zone of group) {
+    store.valveIntent[zone.id] = on;
+  }
+
+  reconcileSharedValves();
+
+  return group;
+}
+
 /**
  * แปลงอื่นที่ยังใช้ “วาล์วเดียวกัน” และต้องการน้ำอยู่
  * ใช้บล็อกการปิดวาล์วที่จะตัดน้ำแปลงอื่น

@@ -4,6 +4,7 @@ import {
   getStore,
   getValveHolders,
   reconcileSharedValves,
+  setValveGroupIntent,
   setZonePump,
 } from '@/lib/server/store';
 import {
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
     state?: unknown;
     command?: unknown;
     valveId?: unknown;
+    scope?: unknown;
   };
 
   try {
@@ -159,8 +161,12 @@ export async function POST(request: Request) {
   const groupId = ZONE_GROUP_IDS[zoneId];
   const { valveId } = getZoneConfig(zoneId);
 
+  // scope = "valve" คือสั่งในนามของ “วาล์วทั้งตัว” (UI รวมแปลงที่ใช้ valve ร่วมกันเป็นหน่วยเดียว)
+  const valveScope = body.scope === 'valve';
+
   // ปิดวาล์วที่แปลงอื่นยังใช้อยู่ไม่ได้ — จะตัดน้ำเขาโดยไม่ตั้งใจ
-  if (state === false) {
+  // (ถ้าสั่งมาในนามของวาล์วทั้งตัว ผู้ใช้ตั้งใจคุมทั้งหน่วยอยู่แล้ว)
+  if (state === false && !valveScope) {
     const holders = getValveHolders(zoneId);
 
     if (holders.length > 0) {
@@ -232,6 +238,10 @@ export async function POST(request: Request) {
   finishCommand(command.commandId, 'done', 'ส่งตรงไป Node-RED สำเร็จ');
 
   setZonePump(zoneId, state, 'local');
+
+  if (valveScope) {
+    setValveGroupIntent(zoneId, state);
+  }
 
   // วาล์วตัวเดียวรดหลายแปลง → การ์ดทุกใบที่แชร์วาล์วขึ้นสถานะตรงกัน
   const sharedZones = reconcileSharedValves();

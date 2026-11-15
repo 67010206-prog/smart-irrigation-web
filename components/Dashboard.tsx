@@ -250,7 +250,7 @@ export default function Dashboard() {
   // เปิด–ปิดปั๊มของแปลง
   // ==============================
 
-  const toggleZonePump = async (zoneId: ZoneId) => {
+  const toggleZonePump = async (zoneId: ZoneId, scope?: 'valve') => {
     if (busyZone) return;
 
     const zone = zones.find((item) => item.id === zoneId);
@@ -261,7 +261,7 @@ export default function Dashboard() {
 
     setBusyZone(zoneId);
 
-    const result = await setZonePumpState(zoneId, nextState);
+    const result = await setZonePumpState(zoneId, nextState, { scope });
 
     if (result.blocked && result.conflict) {
       // วาล์วเดียวกันยังมีแปลงอื่นใช้อยู่ → ไม่ปิดให้ พร้อมบอกว่าใครถืออยู่

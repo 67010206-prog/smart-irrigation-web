@@ -200,8 +200,15 @@
 
 /* การ์ดที่ 5 (ไม้กระถาง) กว้างเต็มแถว */
 .plant-wide {
-  margin-top: 16px;
+  /* การ์ดรวมแปลงที่ใช้วาล์วเดียวกัน (กว้างเต็มแถว) */
+  grid-column: span 2;
   min-height: 0;
+}
+
+@media (max-width: 980px) {
+  .plant-wide {
+    grid-column: span 1;
+  }
 }
 
 .plant-wide .value-card {
