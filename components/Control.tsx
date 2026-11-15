@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import WaterTankCard from './WaterTank';
+import WaterBalance from './WaterBalance';
 
 import type { WaterTank, Weather, Zone, ZoneId, ZoneValues } from '../lib/types/iot';
 import { getZoneConfig } from '../lib/zoneConfig';
@@ -402,6 +403,9 @@ export default function Control({
           />
         </ZoneCard>
       </div>
+
+      {/* งบน้ำรายแปลง (ท้าย Dashboard) */}
+      <WaterBalance />
 
       <div className="page-footnote">
         AgriFlow Dashboard <span>·</span> Prototype สำหรับพัฒนาและทดสอบระบบ IoT
