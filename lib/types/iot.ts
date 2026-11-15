@@ -55,11 +55,35 @@ export interface WaterTank {
   levelPercent: number | null; // ระดับน้ำในถัง (%)
 }
 
+/**
+ * สถานะ "พักรดน้ำรอเติมน้ำ" ที่ Pump Logic Engine (Node-RED) รายงานมา
+ * active = true เมื่อมีกลุ่มที่ยังต้องการน้ำแต่ถูกหยุดชั่วคราวเพราะน้ำหมด
+ */
+export interface PumpAlert {
+  active: boolean;
+  /** group ที่ถูกพัก เช่น ["group5"] */
+  pausedGroups: string[];
+  /** เวลาที่เหลือของกลุ่มที่พัก (วินาที) — มากที่สุดในกลุ่ม */
+  remainingSeconds: number | null;
+  /** เวลาที่เหลือแยกตาม group */
+  remainingByGroup?: Record<string, number>;
+  /** ข้อความจาก engine */
+  message: string | null;
+  /** ระดับน้ำตอนที่พัก (%) */
+  waterLevel: number | null;
+  /** ระดับน้ำที่ต้องถึงก่อนรดต่อ (%) */
+  resumeThreshold: number | null;
+  /** เวลาที่เว็บได้รับแจ้งเตือน (ISO) */
+  at: string | null;
+}
+
 /** ข้อมูลที่ GET /api/sensors/latest ตอบกลับ */
 export interface FarmSnapshot {
   weather: Weather;
   zones: Zone[];
   waterTank: WaterTank;
+  /** แจ้งเตือนเมื่อปั๊มพักรอน้ำ (null = ไม่มี) */
+  pumpAlert?: PumpAlert | null;
   /** สถานะวาล์วแยกตามแปลง */
   valveStatus?: Partial<Record<ZoneId, ValveStatusEntry>>;
   /** สถานะปั๊มตาม group_id */
@@ -77,6 +101,8 @@ export interface TelemetryPayload {
   wind_speed?: number;
   solar_radiation?: number;
   zones?: Partial<Record<ZoneId, ZoneValues>>;
+  /** รายงานสถานะพักรอน้ำจาก Pump Logic Engine */
+  pumpAlert?: Partial<Omit<PumpAlert, 'at'>> | null;
 }
 
 /** หนึ่งจุดข้อมูลสำหรับกราฟ/ตารางประวัติ */

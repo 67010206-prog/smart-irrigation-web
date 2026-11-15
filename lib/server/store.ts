@@ -1,4 +1,5 @@
 import type {
+  PumpAlert,
   WaterTank,
   Weather,
   Zone,
@@ -26,6 +27,8 @@ interface FarmStore {
    * แยกจาก pumpOn เพราะแปลงหลายตัวใช้วาล์วเดียวกัน → pumpOn ที่แสดงต้องมาจากการรวม intent
    */
   valveIntent: Partial<Record<ZoneId, boolean>>;
+  /** สถานะพักรดน้ำรอเติมน้ำ (จาก Pump Logic Engine) */
+  pumpAlert: PumpAlert | null;
 }
 
 // ยังไม่ได้รับค่าจากเซนเซอร์ → null (ไม่แต่งค่าเริ่มต้นขึ้นเอง)
@@ -96,6 +99,7 @@ function createStore(): FarmStore {
     updatedAt: new Date().toISOString(),
     pumpCommandAt: {},
     valveIntent: {},
+    pumpAlert: null,
   };
 }
 
@@ -333,6 +337,37 @@ export function getPumpCommandAt(): Partial<Record<ZoneId, number>> {
   return getStore().pumpCommandAt ?? {};
 }
 
+/** อัปเดต/ล้างแจ้งเตือน "พักรดน้ำรอเติมน้ำ" */
+export function updatePumpAlert(patch: Partial<PumpAlert> | null): PumpAlert | null {
+  const store = getStore();
+
+  if (patch === null) {
+    store.pumpAlert = null;
+
+    return null;
+  }
+
+  store.pumpAlert = {
+    active: false,
+    pausedGroups: [],
+    remainingSeconds: null,
+    remainingByGroup: {},
+    message: null,
+    waterLevel: null,
+    resumeThreshold: null,
+    at: new Date().toISOString(),
+    ...(store.pumpAlert ?? {}),
+    ...patch,
+  };
+
+  return store.pumpAlert;
+}
+
+/** แจ้งเตือนปั๊มล่าสุด */
+export function getPumpAlert(): PumpAlert | null {
+  return getStore().pumpAlert ?? null;
+}
+
 /** มีค่าจริงจากเซนเซอร์แล้วหรือยัง (ใช้ตัดสินว่าจะ hydrate/persist ไหม) */
 export function hasLiveData(): boolean {
   const store = getStore();
@@ -362,6 +397,7 @@ export interface StoreSnapshot {
   zones: Zone[];
   pumpCommandAt: Partial<Record<ZoneId, number>>;
   valveIntent: Partial<Record<ZoneId, boolean>>;
+  pumpAlert: PumpAlert | null;
 }
 
 /** ดึงก้อนข้อมูลปัจจุบันไปบันทึก */
@@ -381,6 +417,7 @@ export function exportSnapshot(): StoreSnapshot {
     })),
     pumpCommandAt: { ...(store.pumpCommandAt ?? {}) },
     valveIntent: { ...(store.valveIntent ?? {}) },
+    pumpAlert: store.pumpAlert ? { ...store.pumpAlert } : null,
   };
 }
 
@@ -423,6 +460,10 @@ export function importSnapshot(raw: unknown): boolean {
 
   if (snapshot.valveIntent && typeof snapshot.valveIntent === 'object') {
     store.valveIntent = { ...snapshot.valveIntent };
+  }
+
+  if (snapshot.pumpAlert && typeof snapshot.pumpAlert === 'object') {
+    store.pumpAlert = { ...(snapshot.pumpAlert as PumpAlert) };
   }
 
   if (typeof snapshot.updatedAt === 'string') store.updatedAt = snapshot.updatedAt;

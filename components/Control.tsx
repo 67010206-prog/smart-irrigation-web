@@ -13,8 +13,16 @@ import {
 
 import WaterTankCard from './WaterTank';
 import WaterBalance from './WaterBalance';
+import PumpPauseAlert from './PumpPauseAlert';
 
-import type { WaterTank, Weather, Zone, ZoneId, ZoneValues } from '../lib/types/iot';
+import type {
+  PumpAlert,
+  WaterTank,
+  Weather,
+  Zone,
+  ZoneId,
+  ZoneValues,
+} from '../lib/types/iot';
 import { getZoneConfig } from '../lib/zoneConfig';
 
 interface ControlProps {
@@ -28,6 +36,8 @@ interface ControlProps {
   onDismissValveWarning?: () => void;
   lastUpdated: Date;
   deviceOnline: boolean;
+  /** สถานะพักรดน้ำรอเติมน้ำจาก Pump Logic Engine */
+  pumpAlert?: PumpAlert | null;
 }
 
 /** อ่านค่าของแปลง (คืน null ถ้าไม่มีค่า) */
@@ -163,6 +173,7 @@ export default function Control({
   onDismissValveWarning,
   lastUpdated,
   deviceOnline,
+  pumpAlert = null,
 }: ControlProps) {
   const updatedLabel = lastUpdated.toLocaleTimeString('th-TH', {
     hour: '2-digit',
@@ -194,6 +205,9 @@ export default function Control({
           </button>
         </div>
       </div>
+
+      {/* แจ้งเตือนเมื่อปั๊มพักรดน้ำรอน้ำ (พร้อมเวลาที่เหลือ) */}
+      <PumpPauseAlert alert={pumpAlert} />
 
       {valveWarning && (
         <div className="notice-banner" role="alert">

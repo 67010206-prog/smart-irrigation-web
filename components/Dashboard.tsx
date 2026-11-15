@@ -13,6 +13,7 @@ import { fetchLatestSensors, setZonePumpState } from '../lib/services/api';
 
 import type {
   PageKey,
+  PumpAlert,
   PumpLog,
   SensorPoint,
   WaterTank,
@@ -88,6 +89,9 @@ export default function Dashboard() {
     detail: string;
   } | null>(null);
 
+  // สถานะพักรดน้ำรอเติมน้ำ (จาก Pump Logic Engine ผ่าน telemetry)
+  const [pumpAlert, setPumpAlert] = useState<PumpAlert | null>(null);
+
   const [history, setHistory] = useState<SensorPoint[]>([]);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [deviceOnline, setDeviceOnline] = useState(false);
@@ -137,6 +141,7 @@ export default function Dashboard() {
       setWaterTank(snapshot.waterTank ?? null);
       setZones(snapshot.zones);
       setPumpOn(snapshot.zones.some((zone) => zone.pumpOn));
+      setPumpAlert(snapshot.pumpAlert ?? null);
 
       const parsedTime = new Date(snapshot.updatedAt);
       const now = Number.isNaN(parsedTime.getTime())
@@ -334,6 +339,7 @@ export default function Dashboard() {
             onDismissValveWarning={() => setValveWarning(null)}
             lastUpdated={lastUpdated}
             deviceOnline={deviceOnline}
+            pumpAlert={pumpAlert}
           />
         ) : page === 'docs' ? (
           <Docs />
