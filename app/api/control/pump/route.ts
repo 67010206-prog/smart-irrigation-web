@@ -165,7 +165,9 @@ export async function POST(request: Request) {
     commandId: command.commandId,
   });
 
-  const forwarded = await forwardPumpCommand(zoneId, state);
+  const forwarded = await forwardPumpCommand(zoneId, state, {
+    commandId: command.commandId,
+  });
 
   if (!forwarded.ok) {
     logEvent('pump.error', forwarded.error, { zone: zoneId, group_id: groupId });
