@@ -184,6 +184,14 @@ export async function POST(request: Request) {
         : pressureHpa;
 
   const pressure = acceptInRange(pressureNormalized, 300, 1100, 'pressure');
+
+  // น้ำฝนของวัน (mm) — รับได้หลายชื่อ ใช้ค่านี้คำนวณน้ำฝนใช้การได้
+  const rainfall = acceptInRange(
+    toNumber(body.rainfallMm ?? body.rainfall ?? body.rain ?? weatherRecord?.rainfallMm),
+    0,
+    300,
+    'rainfall'
+  );
   const light = acceptInRange(lightLux, 0, 200000, 'light');
   const wind = acceptInRange(windMs, 0, 100, 'wind_speed');
   const solar = acceptInRange(
@@ -201,6 +209,7 @@ export async function POST(request: Request) {
     ...(light !== null ? { lightLux: light } : {}),
     ...(wind !== null ? { windMs: wind } : {}),
     ...(solar !== null ? { solarRadiationWm2: solar } : {}),
+    ...(rainfall !== null ? { rainfallMm: rainfall } : {}),
   });
 
   // 2) ระดับน้ำในถังหลัก
@@ -355,6 +364,7 @@ export async function POST(request: Request) {
     lightLux: weather.lightLux,
     windMs: weather.windMs,
     solarRadiationWm2: weather.solarRadiationWm2,
+    rainfallMm: weather.rainfallMm,
     tankWaterLevel: waterTank.levelPercent,
     zones: zones ? Object.keys(zones) : [],
     valves: valveChanges.length > 0 ? valveChanges : undefined,

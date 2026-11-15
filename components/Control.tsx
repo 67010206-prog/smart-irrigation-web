@@ -405,7 +405,10 @@ export default function Control({
       </div>
 
       {/* งบน้ำรายแปลง (ท้าย Dashboard) */}
-      <WaterBalance />
+      <WaterBalance
+        etoMmPerDay={weather.etoMmPerDay}
+        rainfallMm={weather.rainfallMm ?? null}
+      />
 
       <div className="page-footnote">
         AgriFlow Dashboard <span>·</span> Prototype สำหรับพัฒนาและทดสอบระบบ IoT

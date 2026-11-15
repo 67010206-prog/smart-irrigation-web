@@ -46,6 +46,8 @@ export interface Weather {
   windMs?: number | null;
   /** รังสีแสงอาทิตย์ (W/m²) */
   solarRadiationWm2?: number | null;
+  /** น้ำฝนของวัน (mm) — ใช้หาน้ำฝนใช้การได้ */
+  rainfallMm?: number | null;
 }
 
 /** ถังน้ำหลักของระบบ (null = ยังไม่เคยได้รับค่า) */
