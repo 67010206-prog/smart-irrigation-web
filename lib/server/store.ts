@@ -1,4 +1,6 @@
 import type {
+  HistoryPoint,
+  HistoryRange,
   PumpAlert,
   WaterTank,
   Weather,
@@ -7,6 +9,12 @@ import type {
   ZoneValues,
 } from '../types/iot';
 
+import {
+  HISTORY_BUCKET_MS,
+  HISTORY_RETENTION_MS,
+  historyRangeMs,
+} from '../history';
+import { vaporPressureDeficit } from '../vpd';
 import { ZONE_VALVE_IDS } from '../zoneConfig';
 
 /**
@@ -29,6 +37,8 @@ interface FarmStore {
   valveIntent: Partial<Record<ZoneId, boolean>>;
   /** สถานะพักรดน้ำรอเติมน้ำ (จาก Pump Logic Engine) */
   pumpAlert: PumpAlert | null;
+  /** ข้อมูลย้อนหลังในหน่วยความจำ (สูงสุด 7 วัน) — สำเนาถาวรอยู่ที่ Firebase */
+  history: HistoryPoint[];
 }
 
 // ยังไม่ได้รับค่าจากเซนเซอร์ → null (ไม่แต่งค่าเริ่มต้นขึ้นเอง)
@@ -53,7 +63,7 @@ const initialWaterTank: WaterTank = {
 const initialZones: Zone[] = [
   {
     id: 'herb',
-    name: 'ไม้ล้มลุก',
+    name: 'ไม้ยืนต้น',
     pumpOn: false,
     values: {},
     valveId: ZONE_VALVE_IDS.herb,
@@ -67,21 +77,21 @@ const initialZones: Zone[] = [
   },
   {
     id: 'sunnhemp',
-    name: 'ปอเทือง',
+    name: 'แปลงดอกไม้ · ปอเทือง',
     pumpOn: false,
     values: {},
     valveId: ZONE_VALVE_IDS.sunnhemp,
   },
   {
     id: 'sunflower',
-    name: 'ทานตะวัน',
+    name: 'แปลงดอกไม้ · ทานตะวัน',
     pumpOn: false,
     values: {},
     valveId: ZONE_VALVE_IDS.sunflower,
   },
   {
     id: 'potted',
-    name: 'ไม้กระถาง',
+    name: 'แปลงดอกไม้ · ไม้กระถาง',
     pumpOn: false,
     values: {},
     valveId: ZONE_VALVE_IDS.potted,
@@ -100,6 +110,7 @@ function createStore(): FarmStore {
     pumpCommandAt: {},
     valveIntent: {},
     pumpAlert: null,
+    history: [],
   };
 }
 
@@ -118,6 +129,7 @@ export function getStore(): FarmStore {
   store.weather = { ...initialWeather, ...store.weather };
   if (!store.pumpCommandAt) store.pumpCommandAt = {};
   if (!store.valveIntent) store.valveIntent = {};
+  if (!Array.isArray(store.history)) store.history = [];
 
   for (const zone of store.zones) {
     if (typeof zone.valveId !== 'number') zone.valveId = ZONE_VALVE_IDS[zone.id];
@@ -469,4 +481,56 @@ export function importSnapshot(raw: unknown): boolean {
   if (typeof snapshot.updatedAt === 'string') store.updatedAt = snapshot.updatedAt;
 
   return true;
+}
+
+// ==============================
+// ข้อมูลย้อนหลัง (Time-series)
+// ==============================
+
+function toFinite(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * บันทึกค่าปัจจุบันเป็นจุดข้อมูลย้อนหลัง
+ * รวมค่าที่อยู่ในนาทีเดียวกันเป็นจุดเดียว → เก็บ 7 วันได้โดยไม่บวม
+ * คืนจุดที่บันทึก เพื่อให้ caller ส่งต่อไปเก็บที่ Firebase
+ */
+export function appendHistoryPoint(): HistoryPoint {
+  const store = getStore();
+  const { weather } = store;
+  const ts = Math.floor(Date.now() / HISTORY_BUCKET_MS) * HISTORY_BUCKET_MS;
+
+  const point: HistoryPoint = {
+    ts,
+    temperatureC: toFinite(weather.temperatureC),
+    humidity: toFinite(weather.humidity),
+    etoMmPerDay: toFinite(weather.etoMmPerDay),
+    pressureHpa: toFinite(weather.pressureHpa),
+    solarRadiationWm2: toFinite(weather.solarRadiationWm2),
+    windMs: toFinite(weather.windMs),
+    vpdKpa: vaporPressureDeficit(weather.temperatureC, weather.humidity),
+  };
+
+  const cutoff = Date.now() - HISTORY_RETENTION_MS;
+  const kept = store.history.filter((item) => item.ts >= cutoff);
+  const last = kept[kept.length - 1];
+
+  if (last && last.ts === ts) {
+    kept[kept.length - 1] = point;
+  } else {
+    kept.push(point);
+  }
+
+  store.history = kept;
+
+  return point;
+}
+
+/** จุดข้อมูลย้อนหลังภายในช่วงเวลาที่ขอ (เรียงจากเก่า → ใหม่) */
+export function getHistory(range: HistoryRange): HistoryPoint[] {
+  const store = getStore();
+  const since = Date.now() - historyRangeMs(range);
+
+  return store.history.filter((point) => point.ts >= since);
 }

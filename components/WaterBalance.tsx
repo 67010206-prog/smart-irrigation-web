@@ -80,9 +80,10 @@ export default function WaterBalance({ etoMmPerDay, rainfallMm }: WaterBalancePr
           </thead>
 
           <tbody>
-            {rows.map((row) => (
+            {rows.map((row, index) => (
               <tr key={row.plot.id}>
                 <td>
+                  <span className="wb-plot-no">แปลง {index + 1}</span>{' '}
                   <strong>{row.plot.name}</strong>
                   <span className="wb-sub">
                     {row.plot.soil} · อุ้มน้ำ {row.plot.waterHoldingMmPerCm.toFixed(2)}{' '}

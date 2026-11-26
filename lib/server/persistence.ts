@@ -1,28 +1,51 @@
-import { exportSnapshot, hasLiveData, importSnapshot } from './store';
+import type { HistoryPoint, HistoryRange } from '../types/iot';
+
+import {
+  exportSnapshot,
+  getStore,
+  hasLiveData,
+  importSnapshot,
+} from './store';
+import {
+  firebaseEnabled,
+  readHistory,
+  readLatest,
+  writeHistoryPoint,
+  writeLatest,
+} from './firebase';
 
 /**
- * เก็บ snapshot ของ store ลง key-value store ภายนอก (Redis แบบ REST)
- * รองรับทั้ง Vercel KV และ Upstash โดยใช้ fetch ล้วน (ไม่ต้องติดตั้ง SDK)
+ * ที่เก็บข้อมูลถาวร — ลำดับความสำคัญ
  *
- *   KV_REST_API_URL / KV_REST_API_TOKEN              (Vercel KV)
- *   UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN (Upstash)
- *
- * ถ้าไม่ได้ตั้งค่า → ใช้ in-memory เหมือนเดิม (เว็บยังทำงานปกติ แต่ค่าจะหายตอน cold start)
+ * 1) Firebase Realtime Database (ถ้าตั้งค่า FIREBASE_DATABASE_URL)
+ *    - /agriflow/latest          ค่าล่าสุด (ทุก instance อ่านค่าเดียวกัน)
+ *    - /agriflow/history/<ts>    ข้อมูลย้อนหลังสำหรับกราฟ
+ * 2) Vercel KV / Upstash Redis (ของเดิม — ยังใช้ได้ถ้าตั้งค่าไว้)
+ * 3) in-memory (ค่าเริ่มต้น, ค่าหายเมื่อ cold start)
  */
 
-const rawUrl = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL ?? '';
+const rawUrl =
+  process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL ?? '';
 const token =
   process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN ?? '';
 
 const baseUrl = rawUrl.replace(/\/+$/, '');
 const stateKey = process.env.AGRIFLOW_STATE_KEY ?? 'agriflow:state:v1';
 
-/** true = มีที่เก็บถาวรพร้อมใช้ */
-export const persistenceEnabled = Boolean(baseUrl && token);
+const redisEnabled = Boolean(baseUrl && token);
+
+/** true = มีที่เก็บถาวรพร้อมใช้ (Firebase หรือ Redis) */
+export const persistenceEnabled = firebaseEnabled || redisEnabled;
+
+export const persistenceMode = firebaseEnabled
+  ? 'firebase'
+  : redisEnabled
+    ? 'redis'
+    : 'memory';
 
 const requestTimeoutMs = 4000;
 
-function headers(): Record<string, string> {
+function redisHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
 }
 
@@ -41,14 +64,25 @@ export function hydrateStore(): Promise<boolean> {
   if (!hydration) {
     hydration = (async () => {
       try {
+        if (firebaseEnabled) {
+          const remote = await readLatest();
+
+          if (remote && importSnapshot(remote)) return true;
+        }
+
+        if (!redisEnabled) return false;
+
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), requestTimeoutMs);
 
-        const response = await fetch(`${baseUrl}/get/${encodeURIComponent(stateKey)}`, {
-          headers: headers(),
-          cache: 'no-store',
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `${baseUrl}/get/${encodeURIComponent(stateKey)}`,
+          {
+            headers: redisHeaders(),
+            cache: 'no-store',
+            signal: controller.signal,
+          }
+        );
 
         clearTimeout(timer);
 
@@ -73,10 +107,80 @@ export function hydrateStore(): Promise<boolean> {
   return hydration;
 }
 
-/** เขียน snapshot ลงที่เก็บถาวร (fire-and-forget — ไม่หน่วง response) */
-export function persistStore(): void {
+// ==============================
+// ค่าล่าสุดจาก Firebase (ให้ทุก instance เห็นตรงกัน)
+// ==============================
+
+let latestCache: { at: number; value: unknown } | null = null;
+
+async function readRemoteLatest(ttlMs = 2000): Promise<unknown | null> {
+  if (!firebaseEnabled) return null;
+
+  if (latestCache && Date.now() - latestCache.at < ttlMs) {
+    return latestCache.value;
+  }
+
+  const value = await readLatest();
+
+  latestCache = { at: Date.now(), value };
+
+  return value;
+}
+
+/**
+ * ดึง snapshot ล่าสุดจาก Firebase มาใช้ ถ้าใหม่กว่าค่าในหน่วยความจำ
+ * (กันการทับค่าที่เพิ่งสั่งปั๊มจากหน้านี้)
+ */
+export async function syncFromFirebase(): Promise<boolean> {
+  const remote = await readRemoteLatest();
+
+  if (!remote || typeof remote !== 'object') return false;
+
+  const remoteUpdatedAt = (remote as { updatedAt?: unknown }).updatedAt;
+  const localUpdatedAt = getStore().updatedAt;
+
+  if (typeof remoteUpdatedAt === 'string') {
+    const remoteTime = Date.parse(remoteUpdatedAt);
+    const localTime = Date.parse(localUpdatedAt);
+
+    if (
+      Number.isFinite(remoteTime) &&
+      Number.isFinite(localTime) &&
+      remoteTime <= localTime
+    ) {
+      return false;
+    }
+  }
+
+  return importSnapshot(remote);
+}
+
+/** ข้อมูลย้อนหลังจาก Firebase (null = ไม่ได้ตั้งค่า Firebase) */
+export async function readFirebaseHistory(
+  range: HistoryRange
+): Promise<HistoryPoint[] | null> {
+  if (!firebaseEnabled) return null;
+
+  const points = await readHistory(range);
+
+  return points.length > 0 ? points : null;
+}
+
+/** เขียน snapshot ล่าสุด + จุดข้อมูลย้อนหลังลงที่เก็บถาวร (fire-and-forget) */
+export function persistStore(point?: HistoryPoint): void {
   if (!persistenceEnabled) return;
   if (!hasLiveData()) return;
+
+  if (firebaseEnabled) {
+    // เคลียร์ cache เพื่อให้รอบถัดไปอ่านค่าที่เพิ่งเขียน
+    latestCache = null;
+
+    void writeLatest(exportSnapshot());
+
+    if (point) void writeHistoryPoint(point);
+  }
+
+  if (!redisEnabled) return;
 
   const body = JSON.stringify(exportSnapshot());
 
@@ -87,7 +191,7 @@ export function persistStore(): void {
 
       await fetch(`${baseUrl}/set/${encodeURIComponent(stateKey)}`, {
         method: 'POST',
-        headers: { ...headers(), 'Content-Type': 'text/plain' },
+        headers: { ...redisHeaders(), 'Content-Type': 'text/plain' },
         body,
         cache: 'no-store',
         signal: controller.signal,

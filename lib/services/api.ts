@@ -1,5 +1,7 @@
 import type {
   FarmSnapshot,
+  HistoryPoint,
+  HistoryRange,
   TelemetryPayload,
   Zone,
   ZoneId,
@@ -42,6 +44,30 @@ export async function fetchLatestSensors(): Promise<FarmSnapshot | null> {
   } catch (err) {
     console.warn('[API Service] Failed to fetch latest sensors:', err);
     return null;
+  }
+}
+
+/**
+ * GET /api/sensors/latest?range=... — ข้อมูลย้อนหลังสำหรับกราฟ
+ * (backend อ่านจาก Firebase Realtime Database ถ้าตั้งค่าไว้)
+ */
+export async function fetchSensorHistory(
+  range: HistoryRange
+): Promise<HistoryPoint[]> {
+  try {
+    const res = await fetch(
+      `${getApiBaseUrl()}/api/sensors/latest?range=${range}`,
+      { cache: 'no-store' }
+    );
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = (await res.json()) as FarmSnapshot;
+
+    return Array.isArray(data.history) ? data.history : [];
+  } catch (err) {
+    console.warn('[API Service] Failed to fetch sensor history:', err);
+    return [];
   }
 }
 

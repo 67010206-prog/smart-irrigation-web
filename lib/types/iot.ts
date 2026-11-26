@@ -77,6 +77,22 @@ export interface PumpAlert {
   at: string | null;
 }
 
+/** ช่วงเวลาของกราฟข้อมูลย้อนหลัง */
+export type HistoryRange = '1h' | '6h' | '24h' | '7d';
+
+/** หนึ่งจุดข้อมูลย้อนหลัง (ใช้กับกราฟ Section B) */
+export interface HistoryPoint {
+  /** epoch ms ของต้นนาทีที่เก็บค่า */
+  ts: number;
+  temperatureC: number | null;
+  humidity: number | null;
+  etoMmPerDay: number | null;
+  pressureHpa: number | null;
+  solarRadiationWm2: number | null;
+  windMs: number | null;
+  vpdKpa: number | null;
+}
+
 /** ข้อมูลที่ GET /api/sensors/latest ตอบกลับ */
 export interface FarmSnapshot {
   weather: Weather;
@@ -88,6 +104,8 @@ export interface FarmSnapshot {
   valveStatus?: Partial<Record<ZoneId, ValveStatusEntry>>;
   /** สถานะปั๊มตาม group_id */
   pumpStatus?: Record<string, boolean>;
+  /** ข้อมูลย้อนหลัง — ส่งมาก็ต่อเมื่อเรียกด้วย ?range=1h|6h|24h|7d */
+  history?: HistoryPoint[];
   updatedAt: string;
 }
 

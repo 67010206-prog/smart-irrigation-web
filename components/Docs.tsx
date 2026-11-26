@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import {
   BookMarked,
   BookOpen,
+  Boxes,
   Cable,
   Calculator,
   ChevronRight,
@@ -28,6 +29,7 @@ import { SoilWater, WaterFlow } from './docs/GuideSoil';
 import { IrrigationTech, WorkedExample } from './docs/GuideIrrigation';
 import { Glossary, Quiz } from './docs/GuidePractice';
 import { Communication, ControlLogic, Hardware, Safety } from './docs/System';
+import Guide3D from './docs/Guide3D';
 
 import SoilWaterTank from './simulations/SoilWaterTank';
 import IrrigationJourney from './simulations/IrrigationJourney';
@@ -67,6 +69,7 @@ const articles: DocArticle[] = [
   { id: 'safety', label: 'การทดสอบและความปลอดภัย', group: 'การใช้งาน', icon: ShieldCheck, Content: Safety },
 
   // ---------- สื่อการสอน ----------
+  { id: 'guide-3d', label: 'พืช 3 มิติ (สื่อการสอน)', group: 'สื่อการสอน', icon: Boxes, Content: Guide3D },
   { id: 'sim-soil', label: 'ดินคือถังน้ำ (จำลอง)', group: 'สื่อการสอน', icon: Droplets, Content: SoilWaterTank },
   { id: 'sim-level', label: 'กล้องระดับ (จำลอง)', group: 'สื่อการสอน', icon: Ruler, Content: LevelingInstrument },
   { id: 'sim-sugarcane', label: 'น้ำหยดกับอ้อย (จำลอง)', group: 'สื่อการสอน', icon: Waves, Content: SugarcaneIrrigation },

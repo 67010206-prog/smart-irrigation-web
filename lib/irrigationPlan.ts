@@ -35,7 +35,7 @@ export const EFFECTIVE_RAIN_FACTOR = 0.7;
 export const PLOTS: PlotSpec[] = [
   {
     id: 'woody',
-    name: 'แปลง 1 · ไม้ยืนต้น',
+    name: 'ไม้ยืนต้น',
     areaM2: 206.875,
     kc: 0.81,
     soil: 'ดินเหนียว',
@@ -46,7 +46,7 @@ export const PLOTS: PlotSpec[] = [
   },
   {
     id: 'field',
-    name: 'แปลง 2 · พืชไร่',
+    name: 'นาข้าว',
     areaM2: 55 * 12,
     kc: 1.2,
     soil: 'ดินเหนียว',
@@ -56,7 +56,7 @@ export const PLOTS: PlotSpec[] = [
   },
   {
     id: 'flower',
-    name: 'แปลง 3 · แปลงไม้ดอก',
+    name: 'แปลงดอกไม้',
     areaM2: 10.4 * 40.09,
     kc: 1.15,
     soil: 'ดินเหนียว',

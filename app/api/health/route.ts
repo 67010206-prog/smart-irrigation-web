@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { getStore, hasLiveData } from '@/lib/server/store';
-import { hydrateStore, persistenceEnabled } from '@/lib/server/persistence';
+import { hydrateStore, persistenceMode } from '@/lib/server/persistence';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,7 @@ export async function GET() {
       ok: true,
       service: 'agriflow-web',
       hasData: hasLiveData(),
-      persistence: persistenceEnabled ? 'redis-rest' : 'memory',
+      persistence: persistenceMode,
       updatedAt,
       time: new Date().toISOString(),
     },

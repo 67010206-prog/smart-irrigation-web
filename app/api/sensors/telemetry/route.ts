@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { logEvent } from '@/lib/server/debugLog';
 
 import {
+  appendHistoryPoint,
   getStore,
   reconcileSharedValves,
   setZonePump,
@@ -434,8 +435,10 @@ export async function POST(request: Request) {
     });
   }
 
-  // 6.5) บันทึกค่าล่าสุดลงที่เก็บถาวร (ถ้าตั้งค่าไว้) → cold start ก็ยังมีข้อมูล
-  persistStore();
+  // 6.5) บันทึกจุดข้อมูลย้อนหลัง (สำหรับกราฟ) แล้วเขียนลง Firebase/ที่เก็บถาวร
+  const historyPoint = appendHistoryPoint();
+
+  persistStore(historyPoint);
 
   return NextResponse.json({
     ok: true,
