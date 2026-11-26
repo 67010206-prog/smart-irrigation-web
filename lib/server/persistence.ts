@@ -166,8 +166,8 @@ export async function readFirebaseHistory(
   return points.length > 0 ? points : null;
 }
 
-/** เขียน snapshot ล่าสุด + จุดข้อมูลย้อนหลังลงที่เก็บถาวร (fire-and-forget) */
-export function persistStore(point?: HistoryPoint): void {
+/** เขียน snapshot ล่าสุด + จุดข้อมูลย้อนหลังลงที่เก็บถาวร */
+export async function persistStore(point?: HistoryPoint): Promise<void> {
   if (!persistenceEnabled) return;
   if (!hasLiveData()) return;
 
@@ -175,31 +175,29 @@ export function persistStore(point?: HistoryPoint): void {
     // เคลียร์ cache เพื่อให้รอบถัดไปอ่านค่าที่เพิ่งเขียน
     latestCache = null;
 
-    void writeLatest(exportSnapshot());
+    await writeLatest(exportSnapshot());
 
-    if (point) void writeHistoryPoint(point);
+    if (point) await writeHistoryPoint(point);
   }
 
   if (!redisEnabled) return;
 
   const body = JSON.stringify(exportSnapshot());
 
-  void (async () => {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), requestTimeoutMs);
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), requestTimeoutMs);
 
-      await fetch(`${baseUrl}/set/${encodeURIComponent(stateKey)}`, {
-        method: 'POST',
-        headers: { ...redisHeaders(), 'Content-Type': 'text/plain' },
-        body,
-        cache: 'no-store',
-        signal: controller.signal,
-      });
+    await fetch(`${baseUrl}/set/${encodeURIComponent(stateKey)}`, {
+      method: 'POST',
+      headers: { ...redisHeaders(), 'Content-Type': 'text/plain' },
+      body,
+      cache: 'no-store',
+      signal: controller.signal,
+    });
 
-      clearTimeout(timer);
-    } catch {
-      // เขียนไม่ได้ก็ไม่เป็นไร — ค่ายังอยู่ใน memory ของ instance นี้
-    }
-  })();
+    clearTimeout(timer);
+  } catch {
+    // เขียนไม่ได้ก็ไม่เป็นไร — ค่ายังอยู่ใน memory ของ instance นี้
+  }
 }

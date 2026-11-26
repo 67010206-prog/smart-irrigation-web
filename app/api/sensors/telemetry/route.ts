@@ -438,7 +438,7 @@ export async function POST(request: Request) {
   // 6.5) บันทึกจุดข้อมูลย้อนหลัง (สำหรับกราฟ) แล้วเขียนลง Firebase/ที่เก็บถาวร
   const historyPoint = appendHistoryPoint();
 
-  persistStore(historyPoint);
+  void persistStore(historyPoint);
 
   return NextResponse.json({
     ok: true,

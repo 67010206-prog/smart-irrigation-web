@@ -252,7 +252,7 @@ export async function POST(request: Request) {
   const zone = sharedZones.find((item) => item.id === zoneId) ?? null;
 
   // สถานะหลังสั่งต้องอยู่รอด cold start ด้วย
-  persistStore();
+  void persistStore();
 
   return NextResponse.json({
     ok: true,

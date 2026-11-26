@@ -17,6 +17,7 @@ import {
   readFirebaseHistory,
   syncFromFirebase,
 } from '@/lib/server/persistence';
+import { syncFromRemoteSource } from '@/lib/server/remoteSource';
 import { normalizeHistoryRange } from '@/lib/history';
 import { logEvent } from '@/lib/server/debugLog';
 
@@ -103,6 +104,9 @@ export async function GET(request: Request) {
 
   // Firebase เป็นแหล่งข้อมูลกลาง → ให้ทุก instance เห็นค่าล่าสุดตรงกัน
   await syncFromFirebase();
+
+  // ดึงค่าจาก API ต้นทางมาเติมช่องว่างแล้วเขียนลง Firebase (ไม่เกิน 1 ครั้ง/นาที)
+  await syncFromRemoteSource(new URL(request.url).origin);
 
   // ฟังสถานะปั๊มจริงจาก MQTT (pump/control/groupX) — เริ่มครั้งแรกที่มีคนเรียก API
   ensureMqttBridge();

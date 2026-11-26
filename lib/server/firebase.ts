@@ -7,8 +7,10 @@ import { HISTORY_RETENTION_MS, historyRangeMs } from '../history';
  * ใช้ REST แทน SDK → ไม่ต้องเพิ่ม dependency และทำงานได้ทั้ง Node runtime
  * และ serverless ของ Vercel
  *
- * ตัวแปรที่ต้องตั้ง (ใน .env.local หรือ Vercel Environment Variables)
+ * ตัวแปร (ใน .env.local หรือ Vercel Environment Variables) — ไม่ต้องตั้งก็ได้
  *   FIREBASE_DATABASE_URL=https://<project>-default-rtdb.<region>.firebasedatabase.app
+ *     (ค่าเริ่มต้น = bae-garden-default-rtdb.asia-southeast1.firebasedatabase.app;
+ *      ตั้งเป็นค่าว่างเพื่อปิด Firebase แล้วกลับไปใช้ Redis/in-memory)
  *   FIREBASE_DATABASE_SECRET=<database secret>   (ถ้า Rules ไม่ได้เปิดให้เขียน)
  *   FIREBASE_DB_ROOT=agriflow                    (ทางเลือก)
  *
@@ -17,10 +19,17 @@ import { HISTORY_RETENTION_MS, historyRangeMs } from '../history';
  *   /agriflow/history/<ts>      จุดข้อมูลย้อนหลัง (คีย์ = epoch ms ของต้นนาที)
  */
 
+/**
+ * ค่าเริ่มต้น = Realtime Database ของโปรเจกต์นี้ (Rules เปิดเฉพาะโหนด /agriflow)
+ * ไม่ใช่ความลับ — ตั้ง FIREBASE_DATABASE_URL= (ค่าว่าง) เพื่อปิดการใช้ Firebase
+ */
+const DEFAULT_DATABASE_URL =
+  'https://bae-garden-default-rtdb.asia-southeast1.firebasedatabase.app';
+
 const rawUrl = (
   process.env.FIREBASE_DATABASE_URL ??
   process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL ??
-  ''
+  DEFAULT_DATABASE_URL
 ).trim();
 
 const token = (

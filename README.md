@@ -332,6 +332,30 @@ FIREBASE_DB_ROOT=agriflow                    # ทางเลือก
 - ทุกครั้งที่เขียนจุดใหม่ ระบบจะลบจุดที่เก่ากว่า 7 วันออกจาก `/agriflow/history` อัตโนมัติ (`pruneHistory` — อ่านด้วย `orderBy="$key"` + `endAt` แล้วลบด้วย `PATCH` ค่า `null`)
 - History อ่านด้วย `orderBy="$key"` + `startAt` จึงไม่ต้องเพิ่ม index rule
 - หน้าเว็บดึงค่าล่าสุดทุก 10 วินาที และกราฟรีเฟรชทุก 30 วินาที
+
+### ดึงค่าจาก API ต้นทาง → Firebase → หน้าเว็บ
+
+เซนเซอร์แต่ละตัวส่งค่าไม่พร้อมกัน บางรอบค่าบางตัวจึงยังเป็น `null` ระบบจึงดึง snapshot จาก API ต้นทางมา **เติมช่องว่างด้วยค่าล่าสุดที่เคยได้รับ** แล้วเขียนลง Firebase ก่อน ให้หน้าเว็บอ่านค่าที่ครบแล้ว
+
+```text
+API ต้นทาง ──GET /api/sensors/latest──▶ merge กับค่าล่าสุด (ค่า null ไม่ทับค่าเดิม)
+                                          │
+                                          ├─▶ /agriflow/latest
+                                          └─▶ /agriflow/history/<ts>
+                                          ▼
+                                   หน้าเว็บอ่านจาก Firebase
+```
+
+```bash
+AGRIFLOW_SOURCE_URL=https://smart-irrigation-web-beta.vercel.app  # ค่าเริ่มต้น
+AGRIFLOW_SOURCE_SYNC_MS=60000   # ดึงไม่เกิน 1 ครั้ง/นาที (ต่ำสุด 5000)
+AGRIFLOW_SOURCE_URL=            # ตั้งเป็นค่าว่าง = ปิดการดึงข้อมูล
+```
+
+- ทำงานเมื่อมีคนเรียก `GET /api/sensors/latest` (หน้าเว็บ poll ทุก 10 วินาที) และจำกัดความถี่ต่อ instance — ไม่เพิ่ม API route ใหม่
+- ถ้า origin ที่เรียกตรงกับ `AGRIFLOW_SOURCE_URL` (deploy เป็นตัวเดียวกับต้นทาง) จะข้ามเพื่อกันเรียกตัวเองวน
+- สถานะปั๊ม/วาล์ว (`pumpOn`, `valves`, `valveIntent`) **ไม่**ถูกแก้จากต้นทาง — เฉพาะค่าที่วัดได้เท่านั้น
+- ถ้าต้องการให้ history ต่อเนื่องแม้ไม่มีคนเปิดหน้าเว็บ ให้มี cron/Node-RED ยิง `GET /api/sensors/latest` ทุกนาที
 - แนะนำ Rules สำหรับ prototype:
 
 ```json
