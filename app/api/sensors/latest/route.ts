@@ -1,12 +1,23 @@
 import { NextResponse } from 'next/server';
 
-import { getPumpCommandAt, getStore, setZonePump } from '@/lib/server/store';
+import {
+  getHistory,
+  getPumpCommandAt,
+  getStore,
+  setZonePump,
+} from '@/lib/server/store';
 import {
   ZONE_GROUP_IDS,
   ZONE_VALVE_IDS,
   fetchPumpStatus,
 } from '@/lib/server/nodered';
 import { ensureMqttBridge } from '@/lib/server/mqttBridge';
+import {
+  hydrateStore,
+  readFirebaseHistory,
+  syncFromFirebase,
+} from '@/lib/server/persistence';
+import { normalizeHistoryRange } from '@/lib/history';
 import { logEvent } from '@/lib/server/debugLog';
 
 import type { ZoneId } from '@/lib/types/iot';
@@ -81,14 +92,31 @@ async function syncPumpStatus(): Promise<void> {
   }
 }
 
-/** GET /api/sensors/latest — ค่าล่าสุดของค่าอากาศและ 5 แปลง */
-export async function GET() {
+/**
+ * GET /api/sensors/latest — ค่าล่าสุดของค่าอากาศและ 5 แปลง
+ *
+ * ?range=1h|6h|24h|7d → แนบข้อมูลย้อนหลังกลับมาด้วย (อ่านจาก Firebase ถ้าตั้งค่าไว้)
+ */
+export async function GET(request: Request) {
+  // cold start → ดึงค่าล่าสุดที่เคยบันทึกไว้กลับมาก่อนตอบ
+  await hydrateStore();
+
+  // Firebase เป็นแหล่งข้อมูลกลาง → ให้ทุก instance เห็นค่าล่าสุดตรงกัน
+  await syncFromFirebase();
+
   // ฟังสถานะปั๊มจริงจาก MQTT (pump/control/groupX) — เริ่มครั้งแรกที่มีคนเรียก API
   ensureMqttBridge();
 
   await syncPumpStatus();
 
-  const { weather, waterTank, zones, updatedAt } = getStore();
+  const params = new URL(request.url).searchParams;
+  const rangeParam = params.get('range');
+  const range = rangeParam ? normalizeHistoryRange(rangeParam) : null;
+  const history = range
+    ? ((await readFirebaseHistory(range)) ?? getHistory(range))
+    : null;
+
+  const { weather, waterTank, zones, updatedAt, pumpAlert } = getStore();
 
   // สถานะปั๊มแบบ group_id (ตรงกับที่ Node-RED ใช้) สำหรับฝั่งที่อ้าง group เป็นหลัก
   const pumpStatus: Record<string, boolean> = {};
@@ -119,7 +147,10 @@ export async function GET() {
       waterTank,
       pumpStatus,
       valveStatus,
+      // แจ้งเตือนเมื่อปั๊มพักรดน้ำรอเติมน้ำ (null = ไม่มี)
+      pumpAlert: pumpAlert ?? null,
       zones,
+      ...(range && history ? { historyRange: range, history } : {}),
       updatedAt,
     },
     { headers: { 'Cache-Control': 'no-store' } }

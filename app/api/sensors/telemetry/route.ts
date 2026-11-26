@@ -3,9 +3,11 @@ import { NextResponse } from 'next/server';
 import { logEvent } from '@/lib/server/debugLog';
 
 import {
+  appendHistoryPoint,
   getStore,
   reconcileSharedValves,
   setZonePump,
+  updatePumpAlert,
   updateWaterTank,
   updateWeather,
   updateZoneValues,
@@ -13,6 +15,7 @@ import {
 } from '@/lib/server/store';
 
 import { parsePumpStatus } from '@/lib/server/nodered';
+import { persistStore } from '@/lib/server/persistence';
 
 import type { ZoneId, ZoneValues } from '@/lib/types/iot';
 
@@ -369,6 +372,73 @@ export async function POST(request: Request) {
     zones: zones ? Object.keys(zones) : [],
     valves: valveChanges.length > 0 ? valveChanges : undefined,
   });
+
+  // 6.4) สถานะ "พักรดน้ำรอเติมน้ำ" จาก Pump Logic Engine
+  //     { pumpAlert: { pausedGroups: ["group5"], remainingByGroup: { group5: 4680 }, message, waterLevel, resumeThreshold } }
+  const alertRaw =
+    body.pumpAlert && typeof body.pumpAlert === 'object'
+      ? (body.pumpAlert as Record<string, unknown>)
+      : body.pumpState && typeof body.pumpState === 'object'
+        ? (body.pumpState as Record<string, unknown>)
+        : null;
+
+  if (alertRaw) {
+    const pausedGroups = Array.isArray(alertRaw.pausedGroups)
+      ? alertRaw.pausedGroups.filter(
+          (group): group is string => typeof group === 'string'
+        )
+      : [];
+
+    const remainingByGroup: Record<string, number> = {};
+
+    if (
+      alertRaw.remainingByGroup &&
+      typeof alertRaw.remainingByGroup === 'object'
+    ) {
+      for (const [group, value] of Object.entries(
+        alertRaw.remainingByGroup as Record<string, unknown>
+      )) {
+        const seconds = toNumber(value);
+
+        if (seconds !== null && seconds >= 0) {
+          remainingByGroup[group] = seconds;
+        }
+      }
+    }
+
+    const remainingList = Object.values(remainingByGroup);
+    const remainingSeconds =
+      remainingList.length > 0
+        ? Math.max(...remainingList)
+        : (() => {
+            const single = toNumber(alertRaw.remainingSeconds);
+
+            return single !== null && single >= 0 ? single : null;
+          })();
+
+    updatePumpAlert({
+      active: pausedGroups.length > 0,
+      pausedGroups,
+      remainingSeconds,
+      remainingByGroup,
+      message:
+        typeof alertRaw.message === 'string' ? alertRaw.message : null,
+      waterLevel: toNumber(alertRaw.waterLevel),
+      resumeThreshold: toNumber(alertRaw.resumeThreshold),
+      at: new Date().toISOString(),
+    });
+
+    logEvent('pump.alert', 'อัปเดตสถานะพักรดน้ำรอเติมน้ำ', {
+      pausedGroups,
+      remainingSeconds,
+      waterLevel: toNumber(alertRaw.waterLevel),
+    });
+  }
+
+  // 6.5) บันทึกจุดข้อมูลย้อนหลัง (สำหรับกราฟ) แล้วเขียนลง Firebase/ที่เก็บถาวร
+  const historyPoint = appendHistoryPoint();
+
+  persistStore(historyPoint);
 
   return NextResponse.json({
     ok: true,

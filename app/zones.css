@@ -444,6 +444,19 @@
   color: #26433a;
 }
 
+.wb-plot-no {
+  display: inline-block;
+  margin-right: 7px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: #eef6f0;
+  border: 1px solid #dfece3;
+  color: #2f7f59;
+  font-size: 10.5px;
+  font-weight: 600;
+  vertical-align: 1px;
+}
+
 .wb-sub {
   display: block;
   font-size: 11px;
@@ -511,5 +524,107 @@
 @media (max-width: 650px) {
   .wb-stats {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---- แจ้งเตือน: ปั๊มพักรดน้ำรอน้ำ ---- */
+.pump-alert {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border: 1px solid #f0cd86;
+  border-left: 4px solid #e8a13a;
+  border-radius: 12px;
+  background: #fffaf0;
+  box-shadow: 0 1px 2px rgba(184, 134, 45, 0.08);
+}
+
+.pump-alert-icon {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #fdefd4;
+  color: #b8791f;
+}
+
+.pump-alert-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pump-alert-body strong {
+  font-size: 14px;
+  color: #7a5312;
+}
+
+.pump-alert-detail {
+  font-size: 12.5px;
+  color: #8a6a2e;
+}
+
+.pump-alert-detail b {
+  color: #b8791f;
+}
+
+.pump-alert-message {
+  font-size: 11.5px;
+  color: #a08a63;
+}
+
+.pump-alert-time {
+  margin-left: auto;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.pump-alert-time > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #a08a63;
+  justify-content: flex-end;
+}
+
+.pump-alert-time strong {
+  font-size: 22px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: #b8791f;
+}
+
+.pump-alert-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: #a8946d;
+  justify-content: flex-end;
+}
+
+@media (max-width: 650px) {
+  .pump-alert {
+    flex-wrap: wrap;
+  }
+
+  .pump-alert-time {
+    margin-left: 0;
+    text-align: left;
+    width: 100%;
+  }
+
+  .pump-alert-time > span,
+  .pump-alert-hint {
+    justify-content: flex-start;
   }
 }

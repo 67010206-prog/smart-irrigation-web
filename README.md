@@ -14,11 +14,11 @@
 
 | id | ชื่อแปลง | ค่าที่วัด (zone values) | หน่วย |
 |---|---|---|---|
-| `herb` | ไม้ล้มลุก | `soilWaterKpa` | kPa |
+| `herb` | ไม้ยืนต้น | `soilWaterKpa` | kPa |
 | `rice` | นาข้าว | `etoMmPerHour` | mm/ชั่วโมง |
-| `sunnhemp` | ปอเทือง | `soilTempC`, `soilHumidity` | °C, % |
-| `sunflower` | ทานตะวัน | `soilMoisturePercent` | % (1–100) |
-| `potted` | ไม้กระถาง | `soilWaterKpa` | kPa |
+| `sunnhemp` | แปลงดอกไม้ · ปอเทือง | `soilTempC`, `soilHumidity` | °C, % |
+| `sunflower` | แปลงดอกไม้ · ทานตะวัน | `soilMoisturePercent` | % (1–100) |
+| `potted` | แปลงดอกไม้ · ไม้กระถาง | `soilWaterKpa` | kPa |
 
 ค่าอากาศ (ใช้กับการ์ดแถวบนทุกแปลง): `temperatureC` (°C), `humidity` (%), `etoMmPerDay` (mm/วัน)
 
@@ -281,6 +281,71 @@ NEXT_PUBLIC_API_BASE_URL=https://api.example.com
 - ถ้าไม่ตั้งค่า จะใช้ same-origin (`/api/...`) ตามเดิม
 - ต้องรีสตาร์ท dev server หลังแก้ค่า และ build ใหม่เมื่อ deploy
 - ปลายทางต้องตอบรูปแบบ `{ weather, zones, updatedAt }` และรับ `POST /api/control/pump` แบบ `{ zone, state }` เหมือนกัน
+
+---
+
+## Layout ของ Dashboard (หน้า Control)
+
+หน้า Control เป็น Single Dashboard มี Container กลาง แบ่งเป็น 4 Sections
+
+| Section | เนื้อหา |
+|---|---|
+| **A · Environmental Monitoring** | Metric cards 2 แถว: อุณหภูมิ / ความชื้นสัมพัทธ์ / ETo และ ความกดอากาศ / รังสีดวงอาทิตย์ / ความเร็วลม / VPD (สถานะ ปกติ–เตือน, สีและ icon แยกประเภท) |
+| **B · Environmental Data Visualization** | กราฟ Time-series เต็มความกว้าง เลือก parameter ได้ 7 ตัว เลือกช่วง 1H / 6H / 24H / 7D และ Hover ดู Tooltip |
+| **C · Crop Monitoring** | 2 การ์ดบน (ไม้ยืนต้น, นาข้าว) + 1 การ์ดกว้างด้านล่าง (แปลงดอกไม้) พร้อมภาพพืชและปุ่มเปิด–ปิดปั๊มกลางการ์ด |
+| **D · Water Resources & Irrigation** | ระดับน้ำในถังหลัก, สถานะวาล์วรายแปลง และงบน้ำรายวัน |
+
+VPD คำนวณจากสมการ FAO-56
+
+```text
+e_s(T) = 0.6108 × exp(17.27T / (T + 237.3))
+VPD    = e_s(T) × (1 − RH/100)
+```
+
+---
+
+## Firebase Realtime Database (Backend)
+
+ข้อมูลถูกเก็บที่ Firebase Realtime Database ก่อน แล้ว API ของเว็บอ่านมาส่งให้หน้าเว็บแสดงผล
+
+```text
+ESP32 / Node-RED ──POST /api/sensors/telemetry──▶ in-memory store
+                                                       │
+                                                       ├─▶ /agriflow/latest          (snapshot ล่าสุด)
+                                                       └─▶ /agriflow/history/<ts>   (จุดข้อมูลย้อนหลัง)
+
+เว็บ ──GET /api/sensors/latest───────────────▶ snapshot ล่าสุด
+     └─GET /api/sensors/latest?range=24h────▶ snapshot + history[]
+```
+
+**ตั้งค่า** (`.env.local` หรือ Vercel Environment Variables)
+
+```bash
+FIREBASE_DATABASE_URL=https://<project>-default-rtdb.<region>.firebasedatabase.app
+FIREBASE_DATABASE_SECRET=<database secret>   # ถ้า Rules ไม่ได้เปิดให้อ่าน/เขียน
+FIREBASE_DB_ROOT=agriflow                    # ทางเลือก
+```
+
+- ใช้ REST API (`fetch`) ไม่ต้องติดตั้ง SDK และไม่ต้องใช้ service account file
+- ถ้าไม่ได้ตั้ง `FIREBASE_DATABASE_URL` ระบบจะทำงานด้วย in-memory (หรือ Redis/KV ถ้าตั้งไว้) เหมือนเดิม
+- ทุกครั้งที่ telemetry เข้ามา ระบบจะบันทึก snapshot ล่าสุดและจุดข้อมูลย้อนหลัง (รวมค่าที่อยู่ในนาทีเดียวกันเป็นจุดเดียว) เก็บย้อนหลัง 7 วัน
+- ทุกครั้งที่เขียนจุดใหม่ ระบบจะลบจุดที่เก่ากว่า 7 วันออกจาก `/agriflow/history` อัตโนมัติ (`pruneHistory` — อ่านด้วย `orderBy="$key"` + `endAt` แล้วลบด้วย `PATCH` ค่า `null`)
+- History อ่านด้วย `orderBy="$key"` + `startAt` จึงไม่ต้องเพิ่ม index rule
+- หน้าเว็บดึงค่าล่าสุดทุก 10 วินาที และกราฟรีเฟรชทุก 30 วินาที
+- แนะนำ Rules สำหรับ prototype:
+
+```json
+{
+  "rules": {
+    "agriflow": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
+```
+
+> Rules ด้านบนเปิดสาธารณะ เหมาะกับการทดสอบเท่านั้น — production ควรปิด write แล้วให้ backend เป็นผู้เขียนด้วย credential
 
 ---
 

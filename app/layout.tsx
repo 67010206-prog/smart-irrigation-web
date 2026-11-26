@@ -3,9 +3,11 @@ import type { ReactNode } from 'react';
 
 import './globals.css';
 import './zones.css';
+import './dashboard.css';
 import './simulations.css';
 import './docs.css';
 import './teaching.css';
+import './plants3d.css';
 import './docs-type.css';
 import './debug.css';
 

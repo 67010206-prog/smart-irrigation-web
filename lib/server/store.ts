@@ -1,4 +1,7 @@
 import type {
+  HistoryPoint,
+  HistoryRange,
+  PumpAlert,
   WaterTank,
   Weather,
   Zone,
@@ -6,6 +9,12 @@ import type {
   ZoneValues,
 } from '../types/iot';
 
+import {
+  HISTORY_BUCKET_MS,
+  HISTORY_RETENTION_MS,
+  historyRangeMs,
+} from '../history';
+import { vaporPressureDeficit } from '../vpd';
 import { ZONE_VALVE_IDS } from '../zoneConfig';
 
 /**
@@ -26,6 +35,10 @@ interface FarmStore {
    * แยกจาก pumpOn เพราะแปลงหลายตัวใช้วาล์วเดียวกัน → pumpOn ที่แสดงต้องมาจากการรวม intent
    */
   valveIntent: Partial<Record<ZoneId, boolean>>;
+  /** สถานะพักรดน้ำรอเติมน้ำ (จาก Pump Logic Engine) */
+  pumpAlert: PumpAlert | null;
+  /** ข้อมูลย้อนหลังในหน่วยความจำ (สูงสุด 7 วัน) — สำเนาถาวรอยู่ที่ Firebase */
+  history: HistoryPoint[];
 }
 
 // ยังไม่ได้รับค่าจากเซนเซอร์ → null (ไม่แต่งค่าเริ่มต้นขึ้นเอง)
@@ -50,7 +63,7 @@ const initialWaterTank: WaterTank = {
 const initialZones: Zone[] = [
   {
     id: 'herb',
-    name: 'ไม้ล้มลุก',
+    name: 'ไม้ยืนต้น',
     pumpOn: false,
     values: {},
     valveId: ZONE_VALVE_IDS.herb,
@@ -64,21 +77,21 @@ const initialZones: Zone[] = [
   },
   {
     id: 'sunnhemp',
-    name: 'ปอเทือง',
+    name: 'แปลงดอกไม้ · ปอเทือง',
     pumpOn: false,
     values: {},
     valveId: ZONE_VALVE_IDS.sunnhemp,
   },
   {
     id: 'sunflower',
-    name: 'ทานตะวัน',
+    name: 'แปลงดอกไม้ · ทานตะวัน',
     pumpOn: false,
     values: {},
     valveId: ZONE_VALVE_IDS.sunflower,
   },
   {
     id: 'potted',
-    name: 'ไม้กระถาง',
+    name: 'แปลงดอกไม้ · ไม้กระถาง',
     pumpOn: false,
     values: {},
     valveId: ZONE_VALVE_IDS.potted,
@@ -96,6 +109,8 @@ function createStore(): FarmStore {
     updatedAt: new Date().toISOString(),
     pumpCommandAt: {},
     valveIntent: {},
+    pumpAlert: null,
+    history: [],
   };
 }
 
@@ -114,6 +129,7 @@ export function getStore(): FarmStore {
   store.weather = { ...initialWeather, ...store.weather };
   if (!store.pumpCommandAt) store.pumpCommandAt = {};
   if (!store.valveIntent) store.valveIntent = {};
+  if (!Array.isArray(store.history)) store.history = [];
 
   for (const zone of store.zones) {
     if (typeof zone.valveId !== 'number') zone.valveId = ZONE_VALVE_IDS[zone.id];
@@ -331,4 +347,190 @@ export function getValveHolders(zoneId: ZoneId): Zone[] {
 /** เวลาที่สั่งปั๊มล่าสุดของแต่ละแปลง */
 export function getPumpCommandAt(): Partial<Record<ZoneId, number>> {
   return getStore().pumpCommandAt ?? {};
+}
+
+/** อัปเดต/ล้างแจ้งเตือน "พักรดน้ำรอเติมน้ำ" */
+export function updatePumpAlert(patch: Partial<PumpAlert> | null): PumpAlert | null {
+  const store = getStore();
+
+  if (patch === null) {
+    store.pumpAlert = null;
+
+    return null;
+  }
+
+  store.pumpAlert = {
+    active: false,
+    pausedGroups: [],
+    remainingSeconds: null,
+    remainingByGroup: {},
+    message: null,
+    waterLevel: null,
+    resumeThreshold: null,
+    at: new Date().toISOString(),
+    ...(store.pumpAlert ?? {}),
+    ...patch,
+  };
+
+  return store.pumpAlert;
+}
+
+/** แจ้งเตือนปั๊มล่าสุด */
+export function getPumpAlert(): PumpAlert | null {
+  return getStore().pumpAlert ?? null;
+}
+
+/** มีค่าจริงจากเซนเซอร์แล้วหรือยัง (ใช้ตัดสินว่าจะ hydrate/persist ไหม) */
+export function hasLiveData(): boolean {
+  const store = getStore();
+
+  const weatherHasValue = Object.values(store.weather).some(
+    (value) => typeof value === 'number' && Number.isFinite(value)
+  );
+
+  const tankHasValue =
+    typeof store.waterTank.levelPercent === 'number' &&
+    Number.isFinite(store.waterTank.levelPercent);
+
+  const zoneHasValue = store.zones.some(
+    (zone) => Object.keys(zone.values ?? {}).length > 0
+  );
+
+  return weatherHasValue || tankHasValue || zoneHasValue;
+}
+
+/** ก้อนข้อมูลที่บันทึกลงที่เก็บถาวร */
+export interface StoreSnapshot {
+  version: 1;
+  savedAt: string;
+  updatedAt: string;
+  weather: Weather;
+  waterTank: WaterTank;
+  zones: Zone[];
+  pumpCommandAt: Partial<Record<ZoneId, number>>;
+  valveIntent: Partial<Record<ZoneId, boolean>>;
+  pumpAlert: PumpAlert | null;
+}
+
+/** ดึงก้อนข้อมูลปัจจุบันไปบันทึก */
+export function exportSnapshot(): StoreSnapshot {
+  const store = getStore();
+
+  return {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    updatedAt: store.updatedAt,
+    weather: { ...store.weather },
+    waterTank: { ...store.waterTank },
+    zones: store.zones.map((zone) => ({
+      ...zone,
+      values: { ...(zone.values ?? {}) },
+      valves: { ...(zone.valves ?? {}) },
+    })),
+    pumpCommandAt: { ...(store.pumpCommandAt ?? {}) },
+    valveIntent: { ...(store.valveIntent ?? {}) },
+    pumpAlert: store.pumpAlert ? { ...store.pumpAlert } : null,
+  };
+}
+
+/**
+ * คืนค่าจาก snapshot ที่เคยบันทึกไว้ (ใช้ตอน cold start)
+ * คืน true ถ้าใช้ snapshot ได้
+ */
+export function importSnapshot(raw: unknown): boolean {
+  if (!raw || typeof raw !== 'object') return false;
+
+  const snapshot = raw as Partial<StoreSnapshot>;
+
+  if (!snapshot.weather || typeof snapshot.weather !== 'object') return false;
+
+  const store = getStore();
+
+  store.weather = { ...initialWeather, ...snapshot.weather };
+
+  if (snapshot.waterTank && typeof snapshot.waterTank === 'object') {
+    store.waterTank = { ...initialWaterTank, ...snapshot.waterTank };
+  }
+
+  if (Array.isArray(snapshot.zones)) {
+    for (const saved of snapshot.zones) {
+      const zone = store.zones.find((item) => item.id === saved?.id);
+
+      if (!zone) continue;
+
+      zone.values = { ...(saved.values ?? {}) };
+      zone.valves = { ...(saved.valves ?? {}) };
+
+      if (typeof saved.pumpOn === 'boolean') zone.pumpOn = saved.pumpOn;
+      if (typeof saved.valveId === 'number') zone.valveId = saved.valveId;
+    }
+  }
+
+  if (snapshot.pumpCommandAt && typeof snapshot.pumpCommandAt === 'object') {
+    store.pumpCommandAt = { ...snapshot.pumpCommandAt };
+  }
+
+  if (snapshot.valveIntent && typeof snapshot.valveIntent === 'object') {
+    store.valveIntent = { ...snapshot.valveIntent };
+  }
+
+  if (snapshot.pumpAlert && typeof snapshot.pumpAlert === 'object') {
+    store.pumpAlert = { ...(snapshot.pumpAlert as PumpAlert) };
+  }
+
+  if (typeof snapshot.updatedAt === 'string') store.updatedAt = snapshot.updatedAt;
+
+  return true;
+}
+
+// ==============================
+// ข้อมูลย้อนหลัง (Time-series)
+// ==============================
+
+function toFinite(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * บันทึกค่าปัจจุบันเป็นจุดข้อมูลย้อนหลัง
+ * รวมค่าที่อยู่ในนาทีเดียวกันเป็นจุดเดียว → เก็บ 7 วันได้โดยไม่บวม
+ * คืนจุดที่บันทึก เพื่อให้ caller ส่งต่อไปเก็บที่ Firebase
+ */
+export function appendHistoryPoint(): HistoryPoint {
+  const store = getStore();
+  const { weather } = store;
+  const ts = Math.floor(Date.now() / HISTORY_BUCKET_MS) * HISTORY_BUCKET_MS;
+
+  const point: HistoryPoint = {
+    ts,
+    temperatureC: toFinite(weather.temperatureC),
+    humidity: toFinite(weather.humidity),
+    etoMmPerDay: toFinite(weather.etoMmPerDay),
+    pressureHpa: toFinite(weather.pressureHpa),
+    solarRadiationWm2: toFinite(weather.solarRadiationWm2),
+    windMs: toFinite(weather.windMs),
+    vpdKpa: vaporPressureDeficit(weather.temperatureC, weather.humidity),
+  };
+
+  const cutoff = Date.now() - HISTORY_RETENTION_MS;
+  const kept = store.history.filter((item) => item.ts >= cutoff);
+  const last = kept[kept.length - 1];
+
+  if (last && last.ts === ts) {
+    kept[kept.length - 1] = point;
+  } else {
+    kept.push(point);
+  }
+
+  store.history = kept;
+
+  return point;
+}
+
+/** จุดข้อมูลย้อนหลังภายในช่วงเวลาที่ขอ (เรียงจากเก่า → ใหม่) */
+export function getHistory(range: HistoryRange): HistoryPoint[] {
+  const store = getStore();
+  const since = Date.now() - historyRangeMs(range);
+
+  return store.history.filter((point) => point.ts >= since);
 }
